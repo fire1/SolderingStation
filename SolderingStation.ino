@@ -30,7 +30,7 @@
 //#define DEBUG
 
 //
-// Todo test
+//TODO: Handle of 65hz:
 //#define FREQ 50    // 50Hz power in these parts
 #define FREQ 65    // 50Hz power in these parts
 
