@@ -84,10 +84,11 @@ byte char_cel[] = {
 
 
 boolean fenStart = false;
-boolean isHotAirStand = false;
-boolean isSolderStand = false;
 boolean isSleepAirOn = false;
 boolean isSleepSdrOn = false;
+boolean isHotAirStand = false;
+boolean isSolderStand = false;
+
 
 const uint8_t SDR_INPUT = A5; // A5
 const uint8_t AIR_INPUT = A4;
