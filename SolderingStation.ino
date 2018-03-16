@@ -1,7 +1,7 @@
 
 
 #include <Arduino.h>
-#include <TimerOne.h>	// Avaiable from http://www.arduino.cc/playground/Code/Timer1
+#include <TimerOne.h>    // Avaiable from http://www.arduino.cc/playground/Code/Timer1
 #include <PID_v1.h>
 
 //
@@ -22,7 +22,10 @@
 // Screen or Serial print
 //#define DEBUG
 
-#define FREQ 50    // 50Hz power in these parts
+//
+// Todo test
+//#define FREQ 50    // 50Hz power in these parts
+#define FREQ 65    // 50Hz power in these parts
 
 
 #ifdef DEBUG
@@ -109,6 +112,7 @@ PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, 2, 1, 1, DIRECT);
 
 unsigned long debounceSolder, debounceHotAir;
 boolean isSolderOn = false, isHotAirOn = false, isHotAirUse = false;
+
 /**
  * Detect button solder
  */
@@ -195,7 +199,6 @@ void setup() {
 #endif
 
 
-
     airSetPoint = 0;
     sdrSetPoint = 0;
     airPID.SetOutputLimits(0, 1024);
@@ -210,7 +213,7 @@ void setup() {
 }
 
 
-#define READ_SENSOR 25
+#define READ_SENSOR 10
 boolean dbg = false;
 unsigned long loopPrint = 0;
 uint64_t airTemp, sdrTemp = 0;
@@ -251,13 +254,15 @@ void loop() {
     for (uint8_t ms = 1; ms < READ_SENSOR; ++ms) {
         airNow += analogRead(AIR_INPUT);
         sdrNow += analogRead(SDR_INPUT);
-        delayMicroseconds(10);
+        delayMicroseconds(1);
     }
 
     airNow = airNow / READ_SENSOR;
     sdrNow = sdrNow / READ_SENSOR;
 
 
+    //
+    // Resolve solder temperature
     uint16_t currentSolderTemp;
     if (airNow < 350) {
         currentSolderTemp = (uint16_t) map(sdrNow, 0, 350, 0, 250);
@@ -265,6 +270,8 @@ void loop() {
         currentSolderTemp = (uint16_t) map(sdrNow, 350, 700, 250, 480);
     }
 
+    //
+    // Resolve hot air temperature
     uint16_t currentHotAirTemp;
     if (airNow < 20) {
         currentHotAirTemp = (uint16_t) map(airNow, 0, 20, 0, 100);
@@ -287,10 +294,12 @@ void loop() {
     uint16_t showSdrTemp = (sdrTemp / loopIndex);
 
 
-    if (loopIndex > 12) {
-        airTemp = (airTemp / loopIndex) * 3;
-        sdrTemp = (sdrTemp / loopIndex) * 3;
-        loopIndex = 3;
+    //
+    // Smoothing temperatures to show
+    if (loopIndex > 3) {
+        airTemp = (airTemp / loopIndex);
+        sdrTemp = (sdrTemp / loopIndex);
+        loopIndex = 1;
     }
 
 
@@ -366,17 +375,12 @@ void loop() {
     }
 
 
-    if (airInput - 30 > airSetPoint) {
-
-    } else {
-//        airPID.SetOutputLimits(300, 1023);
-    }
-
+    //
+    // Protection from temperature of hot air when boot
     if (millis() > 5000 && !fenStart && airInput < 200) {
         rpmSetPoint = 0;
         fenStart = true;
     }
-
 
     airPID.Compute();
 
@@ -411,7 +415,7 @@ void loop() {
 
 
     unsigned long time = millis();
-    if (time - loopPrint  > LOOP_PRINT) {
+    if (time - loopPrint > LOOP_PRINT) {
         loopPrint = time;
 
 #ifdef DEBUG
