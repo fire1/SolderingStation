@@ -44,7 +44,12 @@
 
 //
 // Sleep mode start
-#define SLEEP_BEGIN 30000
+#define SLEEP_BEGIN_AIR 120000
+#define SLEEP_BEGIN_SDR 120000
+
+#define SLEEP_SETPOINT_AIR 100
+#define SLEEP_SETPOINT_SDR 200
+
 //
 // Shutdown mode start
 #define CUTOFF_BEGIN 120000
@@ -88,7 +93,8 @@ boolean isSleepAirOn = false;
 boolean isSleepSdrOn = false;
 boolean isHotAirStand = false;
 boolean isSolderStand = false;
-
+boolean isSolderUse = true;
+boolean isSolderOn = false, isHotAirOn = false, isHotAirUse = true;
 
 const uint8_t SDR_INPUT = A5; // A5
 const uint8_t AIR_INPUT = A4;
@@ -101,10 +107,15 @@ const uint8_t HOT_OUTPUT = 10; // fen output
 const uint8_t SET_SOLDER_TARGET = A1;
 const uint8_t SET_AIRRPM_TARGET = A2;
 const uint8_t SET_HOTAIR_TARGET = A3;
-const uint8_t SET_HOTAIR_STANDS = A0;
 
 const uint8_t SET_BUTTON_HOTAIR = 7;
 const uint8_t SET_BUTTON_SOLDER = 8;
+
+//
+// Stands
+const uint8_t SET_HOTAIR_STANDS = A0;
+const uint8_t SET_SOLDER_STANDS = 6;
+
 
 uint16_t rpmSetPoint = 1024;
 
@@ -128,19 +139,21 @@ unsigned long standStartSolder = 0;
 
 //
 // AIR
-const double aggKp = 8, aggKi = 1, aggKd = 1;
-const double consKp = 2, consKi = 0.05, consKd = 0.25;
+const double aggKpAir = 8, aggKiAir = 1, aggKdAir = 1;
+const double consKpAir = 2, consKiAir = 0.05, consKdAir = 0.25;
 double airSetPoint, airInput, airOutput;
-PID airPID(&airInput, &airOutput, &airSetPoint, consKp, consKi, consKd, DIRECT);
+PID airPID(&airInput, &airOutput, &airSetPoint, consKpAir, consKiAir, consKdAir, DIRECT);
 
 //
 // Solder
+const double aggKpSdr = 1, aggKiSdr = 0.5, aggKdSdr = 0.15;
+const double consKpSdr = 2, consKiSdr = 1, consKdSdr = 1;
 double sdrSetPoint, sdrInput, sdrOutput;
-PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, 2, 1, 1, DIRECT);
+PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, consKpSdr, consKiSdr, consKdSdr, DIRECT);
 
 
 unsigned long debounceSolder, debounceHotAir;
-boolean isSolderOn = false, isHotAirOn = false, isHotAirUse = false;
+
 
 /**
  * Detect button solder
@@ -151,12 +164,12 @@ void ButtonSolder() {
         if (digitalRead(SET_BUTTON_SOLDER) == LOW) {
             if (!isSolderOn) {
 #ifdef DEBUG
-                Serial.println("SOLDER air ON ");
+                Serial.println(F("SOLDER air ON "));
 #endif
                 isSolderOn = true;
             } else {
 #ifdef DEBUG
-                Serial.println("SOLDER air OFF ");
+                Serial.println(F("SOLDER air OFF "));
 #endif
                 isSolderOn = false;
             }
@@ -174,12 +187,12 @@ void ButtonHotAir() {
         if (digitalRead(SET_BUTTON_HOTAIR) == LOW) {
             if (!isHotAirOn) {
 #ifdef DEBUG
-                Serial.println("Hot air ON ");
+                Serial.println(F("Hot air ON "));
 #endif
                 isHotAirOn = true;
             } else {
 #ifdef DEBUG
-                Serial.println("Hot air OFF ");
+                Serial.println(F("Hot air OFF "));
 #endif
                 isHotAirOn = false;
                 isHotAirStand = false; // disable sleep mode
@@ -205,6 +218,7 @@ void setup() {
     pinMode(SET_HOTAIR_STANDS, INPUT_PULLUP);
     pinMode(SET_BUTTON_SOLDER, INPUT_PULLUP);
     pinMode(SET_BUTTON_HOTAIR, INPUT_PULLUP);
+    pinMode(SET_SOLDER_STANDS, INPUT_PULLUP);
 
 
     digitalWrite(8, HIGH);
@@ -294,18 +308,18 @@ void loop() {
     // Resolve solder temperature
     uint16_t currentSolderTemp;
     if (airNow < 350) {
-        currentSolderTemp = (uint16_t) map(sdrNow, 0, 350, 0, 250);
+        currentSolderTemp = (uint16_t) map(sdrNow, 0, 350, 0, 285);
     } else {
-        currentSolderTemp = (uint16_t) map(sdrNow, 350, 700, 250, 480);
+        currentSolderTemp = (uint16_t) map(sdrNow, 285, 700, 300, 480);
     }
 
     //
     // Resolve hot air temperature
     uint16_t currentHotAirTemp;
-    if (airNow < 20) {
-        currentHotAirTemp = (uint16_t) map(airNow, 0, 20, 0, 100);
+    if (airNow < 90) {
+        currentHotAirTemp = (uint16_t) map(airNow, 0, 90, 0, 220);
     } else {
-        currentHotAirTemp = (uint16_t) map(airNow, 20, 183, 100, 450);
+        currentHotAirTemp = (uint16_t) map(airNow, 90, 215, 220, 580);
     }
 
 
@@ -335,58 +349,80 @@ void loop() {
     ButtonSolder();
     ButtonHotAir();
 
+    /* ==================================
+     *  Solder stand
+     */
     //
-    // Stands
-    if (digitalRead(SET_HOTAIR_STANDS) == HIGH && isHotAirOn && !isHotAirUse) {
-        isHotAirUse = true;
-    } else if (digitalRead(SET_HOTAIR_STANDS) == LOW && isHotAirUse && isHotAirOn) {
-        isHotAirOn = false;
-        isHotAirUse = false;
-        isHotAirStand = true;
-        standStartHotAir = millis();
-    }
+    // Listen for sleep mode
+    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == LOW) {
 
+        if (isSolderUse) {
+            standStartSolder = millis();
+            isSolderUse = false;
+        }
+
+        if (!isSolderUse && millis() - standStartSolder > SLEEP_BEGIN_SDR) {
+            isSleepSdrOn = true;
+            isSolderUse = false;
+            sdrSetPoint = SLEEP_SETPOINT_SDR;
+            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * 3) {
+                isSolderOn = false;
+            }
+        }
+    }
     //
     // Listen for stand
-    if (isHotAirStand && digitalRead(SET_HOTAIR_STANDS) == HIGH) {
-        isSleepAirOn = false;
-        isHotAirOn = true;
-        standStartHotAir = millis(); //standStartHotAir = 0;
+    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == HIGH) {
+        isSolderUse = true;
+        isSleepSdrOn = false;
     }
+
+    /* ==================================
+     *  Hot air stand
+     */
 
     //
     // Listen for sleep mode
-    if (isHotAirStand && digitalRead(SET_HOTAIR_STANDS) == LOW) {
-        if (millis() - standStartHotAir > SLEEP_BEGIN) {
+    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == LOW) {
+
+        if (isHotAirUse) {
+            standStartHotAir = millis();
+            isHotAirUse = false;
+        }
+
+        if (!isHotAirUse && millis() - standStartHotAir > SLEEP_BEGIN_AIR) {
             isSleepAirOn = true;
-            isHotAirOn = false;
+            isHotAirUse = false;
+            airSetPoint = SLEEP_SETPOINT_AIR;
+            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * 3) {
+                isHotAirOn = false;
+            }
         }
     }
-
     //
-    // Turn off air by reseting the stand and sleep
-    if(isSleepAirOn && millis() - standStartHotAir > CUTOFF_BEGIN){
+    // Listen for stand
+    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == HIGH) {
+        isHotAirUse = true;
         isSleepAirOn = false;
-        isHotAirOn = false;
-        isHotAirStand = false;
     }
+
 
 #ifdef DEBUG
     if (Serial.available()) {
         String where = Serial.readStringUntil('=');
-        if (where == "dbg") {
+        if (where == F("dbg")) {
             dbg = (boolean) Serial.readStringUntil('\n').toInt();
         }
 
-        if (where == "sdr") {
+        if (where == F("sdr")) {
             sdrSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
         }
 
-        if (where == "air") {
+        if (where == F("air")) {
             rpmSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
         }
 
-        if (where == "hot") {
+        if (where == F("hot")) {
             airSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
         }
     }
@@ -411,14 +447,23 @@ void loop() {
         analogWrite(SDR_OUTPUT, 0);
     }
 
-
-    double gap = abs(airSetPoint - airInput); //distance away from setpoint
-    if (gap < 10) {
+    double gapSdr = abs(airSetPoint - airInput); //distance away from setpoint
+    if (gapSdr < 10) {
         //we're close to set point, use conservative tuning parameters
-        airPID.SetTunings(consKp, consKi, consKd);
+        sdrPID.SetTunings(consKpSdr, consKiSdr, consKdSdr);
     } else {
         //we're far from set point, use aggressive tuning parameters
-        airPID.SetTunings(aggKp, aggKi, aggKd);
+        sdrPID.SetTunings(aggKpSdr, aggKiSdr, aggKdSdr);
+    }
+
+
+    double gapAir = abs(airSetPoint - airInput); //distance away from setpoint
+    if (gapAir < 10) {
+        //we're close to set point, use conservative tuning parameters
+        airPID.SetTunings(consKpAir, consKiAir, consKdAir);
+    } else {
+        //we're far from set point, use aggressive tuning parameters
+        airPID.SetTunings(aggKpAir, aggKiAir, aggKdAir);
     }
 
 
@@ -474,35 +519,43 @@ void loop() {
 
         //
         // HOT AIR
-        Serial.print("AIR: now ");
+        Serial.print(F("AIR: now "));
         Serial.print(airNow);
 
-        Serial.print(" do ");
+        Serial.print(F(" do "));
         Serial.print(airOutput);
 
-        Serial.print(" / HOT: ");
+        Serial.print(F(" / HOT: "));
         Serial.print(showAirTemp);
 
-        Serial.print("*C | in ");
+        Serial.print(F("*C | in "));
         Serial.print(airInput);
-        Serial.print(" | tar ");
+        Serial.print(F(" | tar "));
         Serial.print(airSetPoint);
+        if (isSleepAirOn) {
+            Serial.print(" SLEEP ");
+        }
         Serial.println('\n');
 
         //
         // IRON
-        Serial.print("IRON: now ");
+        Serial.print(F("IRON: now "));
         Serial.print(sdrNow);
-        Serial.print(" / out ");
+        Serial.print(F(" / out "));
         Serial.print(sdrOutput);
-        Serial.print(" / show ");
+        Serial.print(F(" / show "));
         Serial.print(showSdrTemp);
-        Serial.print("*C in ");
+        Serial.print(F("*C in "));
         Serial.print(sdrInput);
-        Serial.print(" / tar ");
+        Serial.print(F(" / tar "));
         Serial.print(sdrSetPoint);
-        Serial.println('\n');
+        Serial.print(" | SND ");
+        Serial.print(digitalRead(SET_SOLDER_STANDS));
+        if (isSleepSdrOn) {
+            Serial.print(" SLEEP ");
 
+        }
+        Serial.println('\n');
 
 
 #else
@@ -520,8 +573,12 @@ void loop() {
         lcd.print(F("SDR"));
         lcd.setCursor(4, 1);
         if (isSolderOn) {
-            lcd.print((uint16_t) sdrSetPoint);
-            lcd.print("\1");
+            if (isSleepSdrOn) {
+                lcd.print(F(" SLP "));
+            } else {
+                lcd.print((uint16_t) sdrSetPoint);
+                lcd.print("\1");
+            }
             lcd.setCursor(9, 1);
             lcd.print(showSdrTemp);
             lcd.print("\1");
@@ -534,16 +591,18 @@ void loop() {
         lcd.print(F("AIR"));
         lcd.setCursor(4, 0);
         if (isHotAirOn) {
-            lcd.print((uint16_t) airSetPoint);
-            lcd.print("\1");
+            if(isSleepAirOn){
+                lcd.print(F(" SLP "));
+            } else{
+                lcd.print((uint16_t) airSetPoint);
+                lcd.print("\1");
+            }
             lcd.setCursor(9, 0);
             lcd.print(showAirTemp);
             lcd.print("\1");
             lcd.setCursor(14, 0);
             lcd.print(showAirRpm);
-        } else {
-            (isHotAirStand) ? lcd.print(" SLEEP ") : lcd.print(" OFF ");
-        }
+        } else lcd.print(" OFF ");
 
 
 #endif
