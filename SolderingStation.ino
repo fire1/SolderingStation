@@ -86,13 +86,22 @@ byte char_cel[] = {
 };
 
 #endif
+/**
+ * Methods definition
+ */
+static void ButtonSolder();
 
+static void ButtonHotAir();
+
+static void StandSolder();
+
+static void StandHotAir();
+
+static void DebugSerial();
 
 boolean fenStart = false;
 boolean isSleepAirOn = false;
 boolean isSleepSdrOn = false;
-boolean isHotAirStand = false;
-boolean isSolderStand = false;
 boolean isSolderUse = true;
 boolean isSolderOn = false, isHotAirOn = false, isHotAirUse = true;
 
@@ -153,54 +162,6 @@ PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, consKpSdr, consKiSdr, consKdSdr,
 
 
 unsigned long debounceSolder, debounceHotAir;
-
-
-/**
- * Detect button solder
- */
-void ButtonSolder() {
-    if (digitalRead(SET_BUTTON_SOLDER) == LOW && debounceSolder + 350 < millis()) {
-        delay(10);
-        if (digitalRead(SET_BUTTON_SOLDER) == LOW) {
-            if (!isSolderOn) {
-#ifdef DEBUG
-                Serial.println(F("SOLDER air ON "));
-#endif
-                isSolderOn = true;
-            } else {
-#ifdef DEBUG
-                Serial.println(F("SOLDER air OFF "));
-#endif
-                isSolderOn = false;
-            }
-            debounceSolder = millis();
-        }
-    }
-}
-
-/**
- * Detect hot air button
- */
-void ButtonHotAir() {
-    if (digitalRead(SET_BUTTON_HOTAIR) == LOW && debounceHotAir + 350 < millis()) {
-        delay(10);
-        if (digitalRead(SET_BUTTON_HOTAIR) == LOW) {
-            if (!isHotAirOn) {
-#ifdef DEBUG
-                Serial.println(F("Hot air ON "));
-#endif
-                isHotAirOn = true;
-            } else {
-#ifdef DEBUG
-                Serial.println(F("Hot air OFF "));
-#endif
-                isHotAirOn = false;
-                isHotAirStand = false; // disable sleep mode
-            }
-            debounceHotAir = millis();
-        }
-    }
-}
 
 
 void setup() {
@@ -345,88 +306,11 @@ void loop() {
         loopIndex = 1;
     }
 
-
     ButtonSolder();
     ButtonHotAir();
-
-    /* ==================================
-     *  Solder stand
-     */
-    //
-    // Listen for sleep mode
-    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == LOW) {
-
-        if (isSolderUse) {
-            standStartSolder = millis();
-            isSolderUse = false;
-        }
-
-        if (!isSolderUse && millis() - standStartSolder > SLEEP_BEGIN_SDR) {
-            isSleepSdrOn = true;
-            isSolderUse = false;
-            sdrSetPoint = SLEEP_SETPOINT_SDR;
-            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * 3) {
-                isSolderOn = false;
-            }
-        }
-    }
-    //
-    // Listen for stand
-    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == HIGH) {
-        isSolderUse = true;
-        isSleepSdrOn = false;
-    }
-
-    /* ==================================
-     *  Hot air stand
-     */
-
-    //
-    // Listen for sleep mode
-    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == LOW) {
-
-        if (isHotAirUse) {
-            standStartHotAir = millis();
-            isHotAirUse = false;
-        }
-
-        if (!isHotAirUse && millis() - standStartHotAir > SLEEP_BEGIN_AIR) {
-            isSleepAirOn = true;
-            isHotAirUse = false;
-            airSetPoint = SLEEP_SETPOINT_AIR;
-            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * 3) {
-                isHotAirOn = false;
-            }
-        }
-    }
-    //
-    // Listen for stand
-    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == HIGH) {
-        isHotAirUse = true;
-        isSleepAirOn = false;
-    }
-
-
-#ifdef DEBUG
-    if (Serial.available()) {
-        String where = Serial.readStringUntil('=');
-        if (where == F("dbg")) {
-            dbg = (boolean) Serial.readStringUntil('\n').toInt();
-        }
-
-        if (where == F("sdr")) {
-            sdrSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
-        }
-
-        if (where == F("air")) {
-            rpmSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
-        }
-
-        if (where == F("hot")) {
-            airSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
-        }
-    }
-#endif
+    StandSolder();
+    StandHotAir();
+    DebugSerial();
 
     /*
      * Soldering iron
@@ -591,9 +475,9 @@ void loop() {
         lcd.print(F("AIR"));
         lcd.setCursor(4, 0);
         if (isHotAirOn) {
-            if(isSleepAirOn){
+            if (isSleepAirOn) {
                 lcd.print(F(" SLP "));
-            } else{
+            } else {
                 lcd.print((uint16_t) airSetPoint);
                 lcd.print("\1");
             }
@@ -610,6 +494,131 @@ void loop() {
 
 
 }
+/////////////////////////////////////////////////////////////////////////
+////// Methods begin
+/////////////////////////////////////////////////////////////////////////
+/**
+ * Detect button solder
+ */
+void ButtonSolder() {
+    if (digitalRead(SET_BUTTON_SOLDER) == LOW && debounceSolder + 350 < millis()) {
+        delay(10);
+        if (digitalRead(SET_BUTTON_SOLDER) == LOW) {
+            if (!isSolderOn) {
+#ifdef DEBUG
+                Serial.println(F("SOLDER air ON "));
+#endif
+                isSolderOn = true;
+            } else {
+#ifdef DEBUG
+                Serial.println(F("SOLDER air OFF "));
+#endif
+                isSolderOn = false;
+            }
+            debounceSolder = millis();
+        }
+    }
+}
+
+/**
+ * Detect hot air button
+ */
+void ButtonHotAir() {
+    if (digitalRead(SET_BUTTON_HOTAIR) == LOW && debounceHotAir + 350 < millis()) {
+        delay(10);
+        if (digitalRead(SET_BUTTON_HOTAIR) == LOW) {
+            if (!isHotAirOn) {
+#ifdef DEBUG
+                Serial.println(F("Hot air ON "));
+#endif
+                isHotAirOn = true;
+            } else {
+#ifdef DEBUG
+                Serial.println(F("Hot air OFF "));
+#endif
+                isHotAirOn = false;
+
+            }
+            debounceHotAir = millis();
+        }
+    }
+}
 
 
+void StandSolder() {
+    //
+    // Listen for sleep mode
+    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == LOW) {
 
+        if (isSolderUse) {
+            standStartSolder = millis();
+            isSolderUse = false;
+        }
+
+        if (!isSolderUse && millis() - standStartSolder > SLEEP_BEGIN_SDR) {
+            isSleepSdrOn = true;
+            isSolderUse = false;
+            sdrSetPoint = SLEEP_SETPOINT_SDR;
+            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * 3) {
+                isSolderOn = false;
+            }
+        }
+    }
+    //
+    // Listen for stand
+    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == HIGH) {
+        isSolderUse = true;
+        isSleepSdrOn = false;
+    }
+}
+
+void StandHotAir() {
+    //
+    // Listen for sleep mode
+    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == LOW) {
+
+        if (isHotAirUse) {
+            standStartHotAir = millis();
+            isHotAirUse = false;
+        }
+
+        if (!isHotAirUse && millis() - standStartHotAir > SLEEP_BEGIN_AIR) {
+            isSleepAirOn = true;
+            isHotAirUse = false;
+            airSetPoint = SLEEP_SETPOINT_AIR;
+            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * 3) {
+                isHotAirOn = false;
+            }
+        }
+    }
+    //
+    // Listen for stand
+    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == HIGH) {
+        isHotAirUse = true;
+        isSleepAirOn = false;
+    }
+}
+
+
+void DebugSerial() {
+#ifdef DEBUG
+    if (Serial.available()) {
+        String where = Serial.readStringUntil('=');
+        if (where == F("dbg")) {
+            dbg = (boolean) Serial.readStringUntil('\n').toInt();
+        }
+
+        if (where == F("sdr")) {
+            sdrSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
+        }
+
+        if (where == F("air")) {
+            rpmSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
+        }
+
+        if (where == F("hot")) {
+            airSetPoint = (uint16_t) Serial.readStringUntil('\n').toInt();
+        }
+    }
+#endif
+}
