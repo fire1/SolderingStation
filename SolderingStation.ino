@@ -268,19 +268,19 @@ void loop() {
     //
     // Resolve solder temperature
     uint16_t currentSolderTemp;
-    if (airNow < 350) {
-        currentSolderTemp = (uint16_t) map(sdrNow, 0, 350, 0, 285);
+    if (airNow < 430) {
+        currentSolderTemp = (uint16_t) map(sdrNow, 0, 430, 0, 330);
     } else {
-        currentSolderTemp = (uint16_t) map(sdrNow, 285, 700, 300, 480);
+        currentSolderTemp = (uint16_t) map(sdrNow, 430, 550, 330, 425);
     }
 
     //
     // Resolve hot air temperature
     uint16_t currentHotAirTemp;
     if (airNow < 90) {
-        currentHotAirTemp = (uint16_t) map(airNow, 0, 90, 0, 220);
+        currentHotAirTemp = (uint16_t) map(airNow, 0, 90, 0, 320);
     } else {
-        currentHotAirTemp = (uint16_t) map(airNow, 90, 215, 220, 580);
+        currentHotAirTemp = (uint16_t) map(airNow, 90, 160, 320, 455);
     }
 
 
