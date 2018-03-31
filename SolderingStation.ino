@@ -86,6 +86,7 @@ byte char_cel[] = {
 };
 
 #endif
+
 /**
  * Methods definition
  */
@@ -508,6 +509,7 @@ void ButtonSolder() {
 #ifdef DEBUG
                 Serial.println(F("SOLDER air ON "));
 #endif
+                isSolderUse = true;
                 isSolderOn = true;
             } else {
 #ifdef DEBUG
@@ -531,6 +533,7 @@ void ButtonHotAir() {
 #ifdef DEBUG
                 Serial.println(F("Hot air ON "));
 #endif
+                isHotAirUse = true;
                 isHotAirOn = true;
             } else {
 #ifdef DEBUG
