@@ -34,12 +34,12 @@
 //#define FREQ 50    // 50Hz power in these parts
 #define FREQ 65    // 50Hz power in these parts
 
-#define SDR_MIN  250
-#define HOT_MIN  200
-#define RPM_MIN  500
+#define SDR_MIN  300
+#define HOT_MIN  300
+#define RPM_MIN  440
 
 #define SDR_MAX  450
-#define HOT_MAX  480
+#define HOT_MAX  520
 #define RPM_MAX  1021
 
 //
@@ -182,7 +182,7 @@ void setup() {
     pinMode(SET_BUTTON_HOTAIR, INPUT_PULLUP);
     pinMode(SET_SOLDER_STANDS, INPUT_PULLUP);
 
-
+    digitalWrite(SET_SOLDER_STANDS, HIGH);
     digitalWrite(8, HIGH);
 //    analogWrite(SDR_INPUT, 0);
     digitalWrite(8, HIGH);
@@ -511,6 +511,7 @@ void ButtonSolder() {
 #endif
                 isSolderUse = true;
                 isSolderOn = true;
+                isSleepSdrOn = false;
             } else {
 #ifdef DEBUG
                 Serial.println(F("SOLDER air OFF "));
@@ -535,6 +536,7 @@ void ButtonHotAir() {
 #endif
                 isHotAirUse = true;
                 isHotAirOn = true;
+                isSleepAirOn = false;
             } else {
 #ifdef DEBUG
                 Serial.println(F("Hot air OFF "));
