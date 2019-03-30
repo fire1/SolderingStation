@@ -27,7 +27,7 @@
 
 //
 // Screen or Serial print
-//#define DEBUG
+#define DEBUG
 
 //
 //TODO: Handle of 65hz:
@@ -130,7 +130,8 @@ const uint8_t SET_SOLDER_STANDS = 6;
 uint16_t rpmSetPoint = 1024;
 
 
-unsigned long int halfSineTime = 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
+//unsigned long int halfSineTime = 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
+unsigned long int halfSineTime = 8;//The Timerone PWM period, 50Hz = 10000 uS
 
 
 unsigned long standStartHotAir = 0;
@@ -281,7 +282,7 @@ void loop() {
     if (airNow < 90) {
         currentHotAirTemp = (uint16_t) map(airNow, 0, 90, 0, 320);
     } else {
-        currentHotAirTemp = (uint16_t) map(airNow, 90, 160, 320, 455);
+        currentHotAirTemp = (uint16_t) map(airNow, 90, 160, 320, 430);
     }
 
 
