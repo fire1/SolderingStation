@@ -27,12 +27,13 @@
 
 //
 // Screen or Serial print
-#define DEBUG
+//#define DEBUG
 
 //
 //TODO: Handle of 65hz:
 //#define FREQ 50    // 50Hz power in these parts
-#define FREQ 65    // 50Hz power in these parts
+//#define FREQ 65    // 50Hz power in these parts
+#define FREQ 8    // 50Hz power in these parts
 
 #define SDR_MIN  300
 #define HOT_MIN  300
@@ -131,7 +132,7 @@ uint16_t rpmSetPoint = 1024;
 
 
 //unsigned long int halfSineTime = 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
-unsigned long int halfSineTime = 8;//The Timerone PWM period, 50Hz = 10000 uS
+unsigned long int halfSineTime = FREQ;//The Timerone PWM period, 50Hz = 10000 uS
 
 
 unsigned long standStartHotAir = 0;
@@ -279,10 +280,10 @@ void loop() {
     //
     // Resolve hot air temperature
     uint16_t currentHotAirTemp;
-    if (airNow < 90) {
-        currentHotAirTemp = (uint16_t) map(airNow, 0, 90, 0, 320);
+    if (airNow < 140) {
+        currentHotAirTemp = (uint16_t) map(airNow, 90, 140, 200, 300);
     } else {
-        currentHotAirTemp = (uint16_t) map(airNow, 90, 160, 320, 430);
+        currentHotAirTemp = (uint16_t) map(airNow, 140, 160, 300, 400);
     }
 
 
