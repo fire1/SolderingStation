@@ -30,10 +30,9 @@
 //#define DEBUG
 
 //
-//TODO: Handle of 65hz:
-//#define FREQ 50    // 50Hz power in these parts
-//#define FREQ 65    // 50Hz power in these parts
-#define FREQ 8    // 50Hz power in these parts
+// TODO: Handle of 65hz:
+// #define FREQ 65    // 50Hz power in these parts
+#define FREQ 8    // // Way more stable to be lower value
 
 #define SDR_MIN  300
 #define HOT_MIN  300
@@ -131,8 +130,7 @@ const uint8_t SET_SOLDER_STANDS = 6;
 uint16_t rpmSetPoint = 1024;
 
 
-//unsigned long int halfSineTime = 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
-unsigned long int halfSineTime = FREQ;//The Timerone PWM period, 50Hz = 10000 uS
+
 
 
 unsigned long standStartHotAir = 0;
@@ -169,7 +167,8 @@ unsigned long debounceSolder, debounceHotAir;
 
 void setup() {
 
-    Timer1.initialize(halfSineTime);
+    // 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
+    Timer1.initialize(FREQ); // Way more stable variant
 
     pinMode(SDR_INPUT, INPUT);
     pinMode(SDR_OUTPUT, OUTPUT);
