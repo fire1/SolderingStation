@@ -48,12 +48,12 @@
 #define SLEEP_BEGIN_AIR 30000
 #define SLEEP_BEGIN_SDR 60000
 
-#define SLEEP_SETPOINT_AIR 100
-#define SLEEP_SETPOINT_SDR 200
+#define SLEEP_TARGET_AIR 100
+#define SLEEP_TARGET_SDR 200
 
 //
-// Shutdown mode start
-#define CUTOFF_BEGIN 120000
+// Shutdown mode start [SLEEP_BEGIN * OFF_MULTIPLIER]
+#define OFF_MULTIPLIER 3
 
 
 #ifdef DEBUG
@@ -565,8 +565,8 @@ void StandSolder() {
         if (!isSolderUse && millis() - standStartSolder > SLEEP_BEGIN_SDR) {
             isSleepSdrOn = true;
             isSolderUse = false;
-            sdrSetPoint = SLEEP_SETPOINT_SDR;
-            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * 3) {
+            sdrSetPoint = SLEEP_TARGET_SDR;
+            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * OFF_MULTIPLIER) {
                 isSolderOn = false;
             }
         }
@@ -592,8 +592,8 @@ void StandHotAir() {
         if (!isHotAirUse && millis() - standStartHotAir > SLEEP_BEGIN_AIR) {
             isSleepAirOn = true;
             isHotAirUse = false;
-            airSetPoint = SLEEP_SETPOINT_AIR;
-            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * 3) {
+            airSetPoint = SLEEP_TARGET_AIR;
+            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * OFF_MULTIPLIER) {
                 isHotAirOn = false;
             }
         }
