@@ -200,7 +200,7 @@ void setup() {
     lcd.setCursor(0, 0);
     lcd.print(" SOLDER STATION ");
     lcd.setCursor(0, 1);
-    lcd.print(" ver.1 ");
+    lcd.print(" ver.1.0.1 ");
     delay(1500);
     lcd.clear();
 #endif
