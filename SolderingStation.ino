@@ -122,8 +122,8 @@ const uint8_t SET_SOLDER_TARGET = A1;
 const uint8_t SET_AIRRPM_TARGET = A2;
 const uint8_t SET_HOTAIR_TARGET = A3;
 
-const uint8_t SET_BUTTON_HOTAIR = 7;
-const uint8_t SET_BUTTON_SOLDER = 8;
+const uint8_t SET_BUTTON_SOLDER = 7;
+const uint8_t SET_BUTTON_HOTAIR = 8;
 
 //
 // Stands
