@@ -112,7 +112,8 @@ boolean isSolderOn = false, isHotAirOn = false, isHotAirUse = true;
 
 const uint8_t SDR_INPUT = A5; // A5
 const uint8_t AIR_INPUT = A4;
-const uint8_t SDR_OUTPUT = 11;
+
+const uint8_t SDR_OUTPUT = 11; // Solder heater
 const uint8_t FEN_OUTPUT = 9; // fen output
 const uint8_t HOT_OUTPUT = 10; // fen output
 
