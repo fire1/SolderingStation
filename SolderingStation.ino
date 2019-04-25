@@ -272,7 +272,7 @@ void loop() {
     //
     // Resolve solder temperature
     uint16_t currentSolderTemp;
-    if (airNow < 430) {
+    if (sdrNow < 430) {
         currentSolderTemp = (uint16_t) map(sdrNow, 0, 430, 0, 330);
     } else {
         currentSolderTemp = (uint16_t) map(sdrNow, 430, 550, 330, 425);
