@@ -35,16 +35,16 @@
 #define FREQ 8    // // Way more stable to be lower value
 
 #define SDR_MIN  300
-#define HOT_MIN  300
+#define AIR_MIN  300
 #define RPM_MIN  440
 
-#define SDR_MAX  450
-#define HOT_MAX  520
+#define SDR_MAX  420
+#define AIR_MAX  520
 #define RPM_MAX  1021
 
 //
 // Sleep mode start
-#define SLEEP_BEGIN_AIR 30000
+#define SLEEP_BEGIN_AIR 3000
 #define SLEEP_BEGIN_SDR 60000
 
 #define SLEEP_TARGET_AIR 100
@@ -234,7 +234,7 @@ void loop() {
     //
     // My inputs are inverted ...
     sdrSetPoint = (isSolderOn) ? (uint16_t) map(analogRead(SET_SOLDER_TARGET), 1021, 0, SDR_MIN, SDR_MAX) : 0;
-    airSetPoint = (isHotAirOn) ? (uint16_t) map(analogRead(SET_HOTAIR_TARGET), 1021, 0, HOT_MIN, HOT_MAX) : 0;
+    airSetPoint = (isHotAirOn) ? (uint16_t) map(analogRead(SET_HOTAIR_TARGET), 1021, 0, AIR_MIN, AIR_MAX) : 0;
     rpmSetPoint = (isHotAirOn) ? (uint16_t) map(analogRead(SET_AIRRPM_TARGET), 1021, 0, RPM_MIN, RPM_MAX) : 0;
 
 //
