@@ -34,8 +34,8 @@
 // #define FREQ 65    // 50Hz power in these parts
 #define FREQ 8    // // Way more stable to be lower value
 
-#define SDR_MIN  350
-#define AIR_MIN  300
+#define SDR_MIN  300
+#define AIR_MIN  350
 #define RPM_MIN  440
 
 #define SDR_MAX  420
