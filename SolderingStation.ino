@@ -27,19 +27,19 @@
 
 //
 // Screen or Serial print
-//#define DEBUG
+#define DEBUG
 
 //
 // TODO: Handle of 65hz:
 // #define FREQ 65    // 50Hz power in these parts
 #define FREQ 8    // // Way more stable to be lower value
 
-#define SDR_MIN  300
+#define SDR_MIN  350
 #define AIR_MIN  300
 #define RPM_MIN  440
 
 #define SDR_MAX  420
-#define AIR_MAX  520
+#define AIR_MAX  480
 #define RPM_MAX  1021
 
 //
@@ -167,6 +167,8 @@ PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, consKpSdr, consKiSdr, consKdSdr,
 unsigned long debounceSolder, debounceHotAir;
 
 
+
+
 void setup() {
 
     // 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
@@ -199,9 +201,9 @@ void setup() {
     lcd.begin(16, 2);
     lcd.createChar(1, char_cel);
     lcd.setCursor(0, 0);
-    lcd.print(" SOLDER STATION ");
+    lcd.print(F(" SOLDER STATION "));
     lcd.setCursor(0, 1);
-    lcd.print(" ver.1.0.1 ");
+    lcd.print(F(" ver.1.1.0 "));
     delay(1500);
     lcd.clear();
 #endif
@@ -226,6 +228,8 @@ boolean dbg = false;
 unsigned long loopPrint = 0;
 uint64_t airTemp, sdrTemp = 0;
 uint16_t loopIndex = 0;
+volatile uint8_t ms;
+volatile unsigned long airNow, sdrNow;
 
 void loop() {
 
@@ -237,32 +241,14 @@ void loop() {
     airSetPoint = (isHotAirOn) ? (uint16_t) map(analogRead(SET_HOTAIR_TARGET), 1021, 0, AIR_MIN, AIR_MAX) : 0;
     rpmSetPoint = (isHotAirOn) ? (uint16_t) map(analogRead(SET_AIRRPM_TARGET), 1021, 0, RPM_MIN, RPM_MAX) : 0;
 
-//
-// Extra debugging
-//        Serial.print("TARGETS sdr ");
-//        Serial.print(sdrSetPoint);
-//        Serial.print(" air ");
-//        Serial.print(airSetPoint);
-//        Serial.print(" rpm ");
-//        Serial.print(rpmSetPoint);
-//        Serial.println();
-
-//#else
-//    isHotAirOn = true;
-//    isSolderOn = true;
-//#endif
-
-
 
     /*
      * Temperature resolver
      */
-    unsigned long airNow = analogRead(AIR_INPUT);
-    unsigned long sdrNow = analogRead(SDR_INPUT);
-    for (uint8_t ms = 1; ms < READ_SENSOR; ++ms) {
-        airNow += analogRead(AIR_INPUT);
-        sdrNow += analogRead(SDR_INPUT);
-        delayMicroseconds(1);
+    for (ms = 0; ms < READ_SENSOR; ++ms) {
+        airNow += ((analogRead(AIR_INPUT) * 9 + 32 * 5 + 2) / 5);
+        sdrNow += ((analogRead(SDR_INPUT) * 9 + 32 * 5 + 2) / 5) * 0.1;
+        delayMicroseconds(10);
     }
 
     airNow = airNow / READ_SENSOR;
@@ -272,19 +258,18 @@ void loop() {
     //
     // Resolve solder temperature
     uint16_t currentSolderTemp;
-    if (sdrNow < 430) {
-        currentSolderTemp = (uint16_t) map(sdrNow, 0, 430, 0, 330);
+    if (sdrNow < 115) {
+        currentSolderTemp = (uint16_t) map(sdrNow, 24, 115, 28, 325);
     } else {
-        currentSolderTemp = (uint16_t) map(sdrNow, 430, 550, 330, 425);
+        currentSolderTemp = (uint16_t) map(sdrNow, 115, 145, 325, 420);
     }
-
     //
     // Resolve hot air temperature
     uint16_t currentHotAirTemp;
-    if (airNow < 140) {
-        currentHotAirTemp = (uint16_t) map(airNow, 90, 140, 200, 300);
+    if (airNow < 280) {
+        currentHotAirTemp = (uint16_t) map(airNow, 100, 280, 120, 390);
     } else {
-        currentHotAirTemp = (uint16_t) map(airNow, 140, 160, 300, 400);
+        currentHotAirTemp = (uint16_t) map(airNow, 280, 315, 390, 430);
     }
 
 
@@ -304,7 +289,7 @@ void loop() {
 
     //
     // Smoothing temperatures to show
-    if (loopIndex > 3) {
+    if (loopIndex > 6) {
         airTemp = (airTemp / loopIndex);
         sdrTemp = (sdrTemp / loopIndex);
         loopIndex = 1;
@@ -403,7 +388,7 @@ void loop() {
         //
         // DEBUG display
         //
-        printSerial(unsigned long airNow, unsigned long sdrNow, uint16_t showAirTemp, uint16_t showSdrTemp);
+        printSerial(airNow, sdrNow, showAirTemp, showSdrTemp);
 
 
 #else
@@ -487,9 +472,9 @@ void standSolder() {
             isSleepSdrOn = true;
             isSolderUse = false;
             sdrSetPoint = SLEEP_TARGET_SDR;
-            if (millis() - standStartSolder > SLEEP_BEGIN_SDR * OFF_MULTIPLIER) {
-                isSolderOn = false;
-            }
+        }
+        if (millis() - standStartSolder > SLEEP_BEGIN_SDR * OFF_MULTIPLIER) {
+            isSolderOn = false;
         }
     }
     //
@@ -514,10 +499,10 @@ void standHotAir() {
             isSleepAirOn = true;
             isHotAirUse = false;
             airSetPoint = SLEEP_TARGET_AIR;
-            if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * OFF_MULTIPLIER) {
-                isHotAirOn = false;
-            }
         }
+    }
+    if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * OFF_MULTIPLIER) {
+        isHotAirOn = false;
     }
     //
     // Listen for stand
@@ -553,6 +538,7 @@ void inputSerial() {
 void printScreen(uint16_t showSdrTemp, uint16_t showAirTemp, uint16_t showAirRpm) {
     //
     // Solder
+#ifndef DEBUG
     lcd.clear();
     lcd.setCursor(0, 1);
     lcd.print(F("SDR"));
@@ -589,7 +575,7 @@ void printScreen(uint16_t showSdrTemp, uint16_t showAirTemp, uint16_t showAirRpm
         lcd.print(showAirRpm);
     } else lcd.print(" OFF ");
 
-
+#endif
 }
 
 /**
@@ -607,16 +593,18 @@ void printSerial(unsigned long airNow, unsigned long sdrNow, uint16_t showAirTem
     Serial.print(F("AIR: now "));
     Serial.print(airNow);
 
-    Serial.print(F(" do "));
+    Serial.print(F(" out "));
     Serial.print(airOutput);
 
-    Serial.print(F(" / HOT: "));
+    Serial.print(F(" / show "));
     Serial.print(showAirTemp);
 
-    Serial.print(F("*C | in "));
+    Serial.print(F("*C / in "));
     Serial.print(airInput);
-    Serial.print(F(" | tar "));
+    Serial.print(F(" / tar "));
     Serial.print(airSetPoint);
+    Serial.print(" | SND ");
+    Serial.print(digitalRead(SET_HOTAIR_STANDS));
     if (isSleepAirOn) {
         Serial.print(" SLEEP ");
     }
@@ -630,7 +618,7 @@ void printSerial(unsigned long airNow, unsigned long sdrNow, uint16_t showAirTem
     Serial.print(sdrOutput);
     Serial.print(F(" / show "));
     Serial.print(showSdrTemp);
-    Serial.print(F("*C in "));
+    Serial.print(F("*C / in "));
     Serial.print(sdrInput);
     Serial.print(F(" / tar "));
     Serial.print(sdrSetPoint);
