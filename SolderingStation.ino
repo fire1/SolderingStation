@@ -44,10 +44,10 @@
 
 //
 // Sleep mode start
-#define SLEEP_BEGIN_AIR 3000
+#define SLEEP_BEGIN_AIR 6000
 #define SLEEP_BEGIN_SDR 60000
 
-#define SLEEP_TARGET_AIR 100
+#define SLEEP_TARGET_AIR 200
 #define SLEEP_TARGET_SDR 200
 
 //
@@ -167,8 +167,6 @@ PID sdrPID(&sdrInput, &sdrOutput, &sdrSetPoint, consKpSdr, consKiSdr, consKdSdr,
 unsigned long debounceSolder, debounceHotAir;
 
 
-
-
 void setup() {
 
     // 1000000 / (2 * FREQ);//The Timerone PWM period, 50Hz = 10000 uS
@@ -258,8 +256,10 @@ void loop() {
     //
     // Resolve solder temperature
     uint16_t currentSolderTemp;
-    if (sdrNow < 115) {
-        currentSolderTemp = (uint16_t) map(sdrNow, 24, 115, 28, 325);
+    if (sdrNow < 60) {
+        currentSolderTemp = (uint16_t) map(sdrNow, 10, 60, 15, 200);
+    } else if (sdrNow < 115) {
+        currentSolderTemp = (uint16_t) map(sdrNow, 60, 115, 200, 325);
     } else {
         currentSolderTemp = (uint16_t) map(sdrNow, 115, 145, 325, 420);
     }
@@ -476,10 +476,7 @@ void standSolder() {
         if (millis() - standStartSolder > SLEEP_BEGIN_SDR * OFF_MULTIPLIER) {
             isSolderOn = false;
         }
-    }
-    //
-    // Listen for stand
-    if (isSolderOn && digitalRead(SET_SOLDER_STANDS) == HIGH) {
+    } else {
         isSolderUse = true;
         isSleepSdrOn = false;
     }
@@ -500,13 +497,10 @@ void standHotAir() {
             isHotAirUse = false;
             airSetPoint = SLEEP_TARGET_AIR;
         }
-    }
-    if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * OFF_MULTIPLIER) {
-        isHotAirOn = false;
-    }
-    //
-    // Listen for stand
-    if (isHotAirOn && digitalRead(SET_HOTAIR_STANDS) == HIGH) {
+        if (millis() - standStartHotAir > SLEEP_BEGIN_AIR * OFF_MULTIPLIER) {
+            isHotAirOn = false;
+        }
+    } else {
         isHotAirUse = true;
         isSleepAirOn = false;
     }
