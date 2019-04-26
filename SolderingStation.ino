@@ -27,7 +27,7 @@
 
 //
 // Screen or Serial print
-#define DEBUG
+//#define DEBUG
 
 //
 // TODO: Handle of 65hz:
@@ -83,6 +83,16 @@ byte char_cel[] = {
         B00100,
         B00011,
         B00000
+};
+byte char_std[] = {
+        B00000,
+        B00000,
+        B00000,
+        B00000,
+        B00100,
+        B00100,
+        B01010,
+        B00100
 };
 
 #endif
@@ -198,6 +208,7 @@ void setup() {
 #else
     lcd.begin(16, 2);
     lcd.createChar(1, char_cel);
+    lcd.createChar(2, char_std);
     lcd.setCursor(0, 0);
     lcd.print(F(" SOLDER STATION "));
     lcd.setCursor(0, 1);
@@ -536,6 +547,10 @@ void printScreen(uint16_t showSdrTemp, uint16_t showAirTemp, uint16_t showAirRpm
     lcd.clear();
     lcd.setCursor(0, 1);
     lcd.print(F("SDR"));
+    if (digitalRead(SET_SOLDER_STANDS) == LOW) {
+        lcd.setCursor(3, 1);
+        lcd.print("\2");
+    }
     lcd.setCursor(4, 1);
     if (isSolderOn) {
         if (isSleepSdrOn) {
@@ -545,6 +560,7 @@ void printScreen(uint16_t showSdrTemp, uint16_t showAirTemp, uint16_t showAirRpm
             lcd.print("\1");
         }
         lcd.setCursor(9, 1);
+
         lcd.print(showSdrTemp);
         lcd.print("\1");
     } else lcd.print(" OFF ");
@@ -554,6 +570,10 @@ void printScreen(uint16_t showSdrTemp, uint16_t showAirTemp, uint16_t showAirRpm
     // Hot air
     lcd.setCursor(0, 0);
     lcd.print(F("AIR"));
+    if (digitalRead(SET_HOTAIR_STANDS) == LOW) {
+        lcd.setCursor(3, 0);
+        lcd.print("\2");
+    }
     lcd.setCursor(4, 0);
     if (isHotAirOn) {
         if (isSleepAirOn) {
