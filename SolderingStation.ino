@@ -1,9 +1,10 @@
 #include <Arduino.h>
-#include "SdrIron.h"
+#include "SdrIrn.h"
 #include "HotAir.h"
 
 
-SdrIron irn;
+SolderingStation sos;
+SdrIrn irn;
 HotAit air;
 
 
@@ -11,21 +12,24 @@ void setup() {
     Serial.begin(9600);
     irn.begin();
     air.begin();
+    sos.begin();
 }
 
-unsigned long last = 0;
 
 void loop() {
-    unsigned long now = millis();
+    now = millis();
 
-    if (Serial.available())
-        terminal = Serial.readStringUntil('=');
+    if (Serial.available()) terminal = Serial.readStringUntil('=');
 
+    sos.listen();
     irn.listen(terminal);
     air.listen(terminal);
 
     if (now > last) {
-        last = now + 250;
+        last = now + refreshing;
+
+        sos.draw();
+
         air.manage();
         irn.manage();
         terminal = "";

@@ -39,16 +39,11 @@ class HotAit {
 
 
     uint8_t outputHotPwm, outputAirPwm;
-    int16_t drawTmp;
-    int16_t activeRawTmp;
-    uint16_t targetRawTmp = 0;
-    uint32_t averageRawTmp;
+    int16_t activeRawTmp, activeTemp;
+    uint16_t targetTmp = 0;
+    double averageTmp;
 
 private:
-
-    void setHotPwm(uint8_t pwm) {
-        hotPwm = pwm;
-    }
 
     void terminal(String where) {
         if (Serial.available()) {
@@ -62,11 +57,12 @@ private:
             }
 
             if (where == F("at")) {
-                targetRawTmp = Serial.readStringUntil('\n').toInt();
+                targetTmp = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("HOT TARGET: "));
-                Serial.print(targetRawTmp);
+                Serial.print(targetTmp);
                 Serial.println();
+                airPID.clear();
             }
 
 
@@ -85,10 +81,12 @@ private:
         Serial.print(F("  //   "));
 
         Serial.print(F(" AIR:  "));
-        Serial.print(drawTmp);
+        Serial.print((uint16_t) averageTmp);
+        Serial.print(F(" / "));
+        Serial.print(activeTemp);
 
         Serial.print(F(" ATar: "));
-        Serial.print(targetRawTmp);
+        Serial.print(targetTmp);
 
         Serial.print(F(" ATmp: "));
         Serial.print(activeRawTmp);
@@ -108,13 +106,8 @@ private:
             delayMicroseconds(50);
         }
         activeRawTmp = avr / index;
-//        activeRawTmp = (uint16_t) 1.758 * activeRawTmp - 0.8;
-        averageRawTmp += (activeRawTmp - averageRawTmp) * 0.05;
-
-        drawTmp = (int16_t) 1.43 * averageRawTmp - 8.793; // 	Y = 1.143*X - 8.793
-        if (drawTmp < 0) {
-            drawTmp = 0;
-        }
+        activeTemp = map(activeRawTmp, 200, 450, 220, 500) + 10;
+        averageTmp += (activeTemp - averageTmp) * 0.05;
 
 
     }
@@ -133,6 +126,7 @@ public:
         pinMode(pinAirTmp, INPUT);
         DimmableLight::setSyncPin(pinSyncAc);
         DimmableLight::begin();
+        analogWrite(pinAirPwm, 255);
     }
 
 
@@ -143,14 +137,17 @@ public:
 
     void manage() {
         readTemp();
-        if (targetRawTmp > 0)
-            outputHotPwm = (uint8_t) airPID.step(targetRawTmp, activeRawTmp);
-        hot.setBrightness(outputHotPwm);
+        if (targetTmp > 0)
+            outputHotPwm = (uint8_t) airPID.step(targetTmp, activeTemp);
 
-        if (outputAirPwm == 0 && activeRawTmp > 200) {
+
+        if (targetTmp == 0 && activeTemp > 80 || activeTemp > 500) {
             analogWrite(pinAirPwm, 255);
-        } else
+            hot.setBrightness(0);
+        } else {
+            hot.setBrightness(outputHotPwm);
             analogWrite(pinAirPwm, outputAirPwm);
+        }
 
         debug();
     }

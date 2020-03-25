@@ -13,7 +13,7 @@ float sdrKp = 7.98, sdrKi = 0.055, sdrKd = 0.86, sdrHz = 10;          /*My value
 FastPID sdrPID(sdrKp, sdrKi, sdrKd, sdrHz, 8, false);
 
 
-class SdrIron {
+class SdrIrn {
 
 private:
 
@@ -33,10 +33,11 @@ private:
             delayMicroseconds(50);
         }
         activeRawTmp = avr / index;
-        activeRawTmp = (uint16_t) 1.758 * activeRawTmp - 0.8;
         averageRawTmp += (activeRawTmp - averageRawTmp) * 0.05;
-        drawTmp = averageRawTmp; // 	Y = 1.059*X - 39.39
-//        drawTmp = (uint16_t)1.080 * averageRawTmp - 42.00; // 	Y = 1.060*X - 42.00
+        drawTmp = (int16_t) 1.758 * averageRawTmp - 0.8; // 	Y = 1.059*X - 39.39
+        if (drawTmp < 0) {
+            drawTmp = 0;
+        }
 
     }
 
@@ -82,17 +83,17 @@ private:
     }
 
 public:
-    SdrIron() {
+    SdrIrn() {
 
     }
 
 
     static void toggleSdrIron() {
-        SdrIron::toggleSwc++;
+        SdrIrn::toggleSwc++;
     }
 
     void begin() {
-//        enableInterrupt(pinIronSwc, SdrIron::toggleSdrIron, CHANGE);
+//        enableInterrupt(pinIronSwc, SdrIrn::toggleSdrIron, CHANGE);
         pinMode(pinIronPwm, OUTPUT);
         pinMode(pinIronSwc, INPUT_PULLUP);
         pinMode(pinIronTmp, INPUT);
@@ -114,7 +115,7 @@ public:
 
 };
 
-static int8_t SdrIron::toggleSwc = 0;
+static int8_t SdrIrn::toggleSwc = 0;
 
 
 #endif //SOLDERINGSTATION_SOLDERINGSTATION_H
