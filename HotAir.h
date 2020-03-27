@@ -35,9 +35,9 @@ void isrAC() {
     digitalWrite(pinHotPwm, LOW);    // triac Off
 }
 
-class HotAit {
+class HotAir {
 
-
+    boolean isTermina = false;
     uint8_t outputHotPwm, outputAirPwm;
     int16_t activeRawTmp, activeTemp;
     uint16_t targetTmp = 0;
@@ -49,6 +49,7 @@ private:
         if (Serial.available()) {
 
             if (where == F("ap")) {
+                isTermina = true;
                 outputHotPwm = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("HOT PWM: "));
@@ -57,6 +58,7 @@ private:
             }
 
             if (where == F("at")) {
+                isTermina = true;
                 targetTmp = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("HOT TARGET: "));
@@ -67,6 +69,7 @@ private:
 
 
             if (where == F("fp")) {
+                isTermina = true;
                 outputAirPwm = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("AIR SPEED: "));
@@ -115,7 +118,7 @@ private:
 
 public:
 
-    HotAit() {}
+    HotAir() {}
 
 
     void begin() {
@@ -135,8 +138,19 @@ public:
     }
 
 
-    void manage() {
+    void manage(SolderingStation sos) {
         readTemp();
+        if (sos.isHot() && !isTermina) {
+            uint16_t input;
+            input = sos.getHotSetPoint();
+            targetTmp = (uint16_t) map(input, 0, 1024, 200, 450);
+            input = sos.getAirSetPoint();
+            outputAirPwm = (uint16_t) map(input, 0, 1024, 1, 50);
+        } else if (!sos.isHot() && !isTermina) {
+            targetTmp = 0;
+            outputAirPwm = 0;
+        }
+
         if (targetTmp > 0)
             outputHotPwm = (uint8_t) airPID.step(targetTmp, activeTemp);
 

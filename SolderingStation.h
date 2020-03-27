@@ -64,7 +64,7 @@ class SolderingStation {
 
     boolean stateIrn = false, stateHot = false;
     sound tones = {0, 0, 0};
-    int valAir, valHot, valIrn, lastAir, lastHot, lastIrn;
+    uint16_t valAir, valHot, valIrn, lastAir, lastHot, lastIrn;
 
     uint8_t playIndex = 0;
     unsigned long playSound = 0, playMute = 0;
@@ -161,8 +161,8 @@ public:
         pinMode(pinBuzzer, OUTPUT);
 
         // pin D9/D10 PWM
-        TCCR1B = TCCR1B & B11111000 | B00000101; // for PWM frequency of 30.64 Hz
-
+        TCCR1B = TCCR1B & B11111000 | B00000001;
+//        TCCR1B = TCCR1B & B11111000 | B00000101; // for PWM frequency of 30.64 Hz
         // TCCR1B = TCCR1B & B11111000 | B00000011; // for PWM frequency of 490.20 Hz (The DEFAULT)
         // TCCR1B = TCCR1B & B11111000 | B00000100; // for PWM frequency of 122.55 Hz
 
@@ -187,15 +187,15 @@ public:
     }
 
 
-    inline int getAirSetpoint() {
+    inline uint16_t getAirSetPoint() {
         return valAir;
     }
 
-    inline int getHotSetpoint() {
+    inline uint16_t getHotSetPoint() {
         return valHot;
     }
 
-    inline int getIrnSetpoint() {
+    inline uint16_t getIrnSetPoint() {
         return valIrn;
     }
 

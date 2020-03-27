@@ -5,7 +5,7 @@
 
 SolderingStation sos;
 SdrIrn irn;
-HotAit air;
+HotAir air;
 
 
 void setup() {
