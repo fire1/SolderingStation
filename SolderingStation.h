@@ -46,8 +46,8 @@ const uint8_t pinAirTmp = A6;
 const uint8_t pinPotAir = A2;
 const uint8_t pinPotHot = A1;
 const uint8_t pinPotIrn = A0;
-const uint8_t pinBtnHot = A3;
-const uint8_t pinBtnIrn = 12;
+const uint8_t pinBtnHot = 12;
+const uint8_t pinBtnIrn = A3;
 
 const uint8_t pinBuzzer = 8;
 const int16_t refreshing = 250;
@@ -110,18 +110,20 @@ class SolderingStation {
 
 
         if (digitalRead(pinBtnHot) == LOW) {
-            delay(10);
+            delay(15);
             if (digitalRead(pinBtnHot) == LOW) {
-                stateHot = !stateHot;
+//                stateHot = !stateHot;
                 stateHot ? play(toneOn) : play(toneOff);
+                delay(200);
             }
         }
 
         if (digitalRead(pinBtnIrn) == LOW) {
-            delay(10);
+            delay(15);
             if (digitalRead(pinBtnIrn) == LOW) {
                 stateIrn = !stateIrn;
                 stateIrn ? play(toneOn) : play(toneOff);
+                delay(200);
             }
         }
     }
@@ -149,6 +151,18 @@ class SolderingStation {
         }
     }
 
+    void debug() {
+        Serial.print(F("\t//\t"));
+        Serial.print(F(" Bh: "));
+        Serial.print(isHot());
+
+        Serial.print(F(" Bi: "));
+        Serial.print(isIrn());
+
+        Serial.print(F(" B: "));
+        Serial.print(digitalRead(pinBtnHot));
+    }
+
 public:
     SolderingStation() {}
 
@@ -160,22 +174,20 @@ public:
         pinMode(pinBtnIrn, INPUT_PULLUP);
         pinMode(pinBuzzer, OUTPUT);
 
-        // pin D9/D10 PWM
-        TCCR1B = TCCR1B & B11111000 | B00000001;
-//        TCCR1B = TCCR1B & B11111000 | B00000101; // for PWM frequency of 30.64 Hz
-        // TCCR1B = TCCR1B & B11111000 | B00000011; // for PWM frequency of 490.20 Hz (The DEFAULT)
-        // TCCR1B = TCCR1B & B11111000 | B00000100; // for PWM frequency of 122.55 Hz
+
 
     }
 
     void listen() {
         inputs();
         player();
+
     }
 
 
     void draw() {
 
+        debug();
     }
 
     inline boolean isHot() {

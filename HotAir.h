@@ -81,7 +81,7 @@ private:
     }
 
     void debug() {
-        Serial.print(F("  //   "));
+        Serial.print(F("\t//\t"));
 
         Serial.print(F(" AIR:  "));
         Serial.print((uint16_t) averageTmp);
