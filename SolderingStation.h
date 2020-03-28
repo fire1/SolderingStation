@@ -25,13 +25,15 @@ unsigned long now = 0, last = 0;
 String terminal;
 
 
+boolean isAirOn = false, isIrnOn = false, isAirStandby = false, isIrnStandby;
+uint16_t  setIrn, setAir, setFan;
 //
 // Solder iron
 volatile uint8_t index = 0; // Index for "For" :D
 const uint8_t adcSamples = 5;
 const uint8_t pinIronPwm = 10;
 const uint8_t pinIronTmp = A7;
-const uint8_t pinIronSwc = 2;
+const uint8_t pinIronSwc = 4;
 
 //
 // Hot air
@@ -43,15 +45,16 @@ const uint8_t pinAirTmp = A6;
 
 //
 // Inputs
-const uint8_t pinPotAir = A2;
+const uint8_t pinPotAir = A0;
 const uint8_t pinPotHot = A1;
-const uint8_t pinPotIrn = A0;
+const uint8_t pinPotIrn = A2;
 const uint8_t pinBtnHot = 12;
 const uint8_t pinBtnIrn = A3;
 
 const uint8_t pinBuzzer = 8;
 const int16_t refreshing = 250;
-
+const unsigned long standby = 1600/*00*/;
+const unsigned long shutdown = 2400/*00*/;
 //
 // Sounds
 typedef uint8_t sound[3];
@@ -62,28 +65,15 @@ sound toneOff = {25, 10, 2}; // off
 
 class SolderingStation {
 
-    boolean stateIrn = false, stateHot = false;
-    sound tones = {0, 0, 0};
-    uint16_t valAir, valHot, valIrn, lastAir, lastHot, lastIrn;
 
+    sound tones = {0, 0, 0};
     uint8_t playIndex = 0;
     unsigned long playSound = 0, playMute = 0;
 
 
     boolean compare(int read, int last) {
+        return read != last;
         return read != last && read > last + 5 && read < last - 5;
-    }
-
-
-    void terminal(String where) {
-
-        if (where == F("it")) {
-            valIrn = Serial.readStringUntil('\n').toInt();
-            Serial.println();
-            Serial.print(F("IRON TARGET: "));
-            Serial.print(valIrn);
-            Serial.println();
-        }
     }
 
     void play(sound value) {
@@ -96,34 +86,34 @@ class SolderingStation {
         int read;
 
         read = analogRead(pinPotAir);
-        if (compare(read, valAir))
-            valAir = read;
+        if (compare(read, setFan))
+            setFan = read;
 
         read = analogRead(pinPotHot);
-        if (compare(read, valHot))
-            valHot = read;
+        if (compare(read, setAir))
+            setAir = read;
 
 
-        read = analogRead(pinPotHot);
-        if (compare(read, valIrn))
-            valIrn = read;
+        read = analogRead(pinPotIrn);
+        if (compare(read, setIrn))
+            setIrn = read;
 
 
         if (digitalRead(pinBtnHot) == LOW) {
-            delay(15);
+            delay(10);
             if (digitalRead(pinBtnHot) == LOW) {
-//                stateHot = !stateHot;
-                stateHot ? play(toneOn) : play(toneOff);
-                delay(200);
+                isAirOn = !isAirOn;
+                isAirOn ? play(toneOn) : play(toneOff);
+                delay(250);
             }
         }
 
         if (digitalRead(pinBtnIrn) == LOW) {
-            delay(15);
+            delay(10);
             if (digitalRead(pinBtnIrn) == LOW) {
-                stateIrn = !stateIrn;
-                stateIrn ? play(toneOn) : play(toneOff);
-                delay(200);
+                isIrnOn = !isIrnOn;
+                isIrnOn ? play(toneOn) : play(toneOff);
+                delay(250);
             }
         }
     }
@@ -132,15 +122,15 @@ class SolderingStation {
     void player() {
         if (tones[3] == 0) return;
 
-        unsigned long time = millis();
+
         if (tones[3] < playIndex) {
-            if (playSound == 0 && playMute < time) {
-                playSound = time + tones[1];
+            if (playSound == 0 && playMute < now) {
+                playSound = now + tones[1];
                 playIndex++;
                 digitalWrite(pinBuzzer, HIGH);
-            } else if (playSound > time) {
+            } else if (playSound > now) {
                 playSound = 0;
-                playMute = time + tones[2];
+                playMute = now + tones[2];
                 digitalWrite(pinBuzzer, LOW);
             }
 
@@ -152,15 +142,19 @@ class SolderingStation {
     }
 
     void debug() {
-        Serial.print(F("\t//\t"));
-        Serial.print(F(" Bh: "));
-        Serial.print(isHot());
+        Serial.println();
 
-        Serial.print(F(" Bi: "));
-        Serial.print(isIrn());
+        Serial.print(F(" IO: "));
+        Serial.print(isIrnOn);
 
-        Serial.print(F(" B: "));
-        Serial.print(digitalRead(pinBtnHot));
+        Serial.print(F(" AO: "));
+        Serial.print(isAirOn);
+
+        Serial.print(F(" IS: "));
+        Serial.print(isIrnStandby);
+
+        Serial.print(F(" AS: "));
+        Serial.print(isAirStandby);
     }
 
 public:
@@ -174,7 +168,8 @@ public:
         pinMode(pinBtnIrn, INPUT_PULLUP);
         pinMode(pinBuzzer, OUTPUT);
 
-
+        digitalWrite(pinBtnHot, HIGH);
+        digitalWrite(pinBtnIrn, HIGH);
 
     }
 
@@ -188,27 +183,6 @@ public:
     void draw() {
 
         debug();
-    }
-
-    inline boolean isHot() {
-        return stateHot;
-    }
-
-    inline boolean isIrn() {
-        return stateIrn;
-    }
-
-
-    inline uint16_t getAirSetPoint() {
-        return valAir;
-    }
-
-    inline uint16_t getHotSetPoint() {
-        return valHot;
-    }
-
-    inline uint16_t getIrnSetPoint() {
-        return valIrn;
     }
 
 

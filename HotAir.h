@@ -24,23 +24,19 @@ FastPID airPID(airKp, airKi, airKd, airHz, 8, false);
 uint8_t hotPwm = 0;
 uint8_t hertz = 75;
 
-//
-// 75 For 60Hz =>65
-void isrAC() {
-    unsigned int dimTime = (/*75*/ hertz * hotPwm);
-    delayMicroseconds(dimTime);    // Off cycle
-    digitalWrite(pinHotPwm, HIGH);   // triac firing
-    delayMicroseconds(10);         // triac On propagation delay (for 60Hz use 8.33)
-//    delayMicroseconds((dimTime - 10000) / 1000);         // triac On propagation delay (for 60Hz use 8.33)
-    digitalWrite(pinHotPwm, LOW);    // triac Off
-}
 
 class HotAir {
 
-    boolean isTermina = false;
+
+    boolean isTerminal = false;
+    boolean isStandby = false;
+    uint8_t lastState = 0;
     uint8_t outputHotPwm, outputAirPwm;
     int16_t activeRawTmp, activeTemp;
     uint16_t targetTmp = 0;
+    uint16_t readIndTmp = 0;
+    unsigned long readRawTmp = 0;
+    unsigned long standBegin = 0;
     double averageTmp;
 
 private:
@@ -49,7 +45,7 @@ private:
         if (Serial.available()) {
 
             if (where == F("ap")) {
-                isTermina = true;
+                isTerminal = true;
                 outputHotPwm = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("HOT PWM: "));
@@ -58,7 +54,7 @@ private:
             }
 
             if (where == F("at")) {
-                isTermina = true;
+                isTerminal = true;
                 targetTmp = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("HOT TARGET: "));
@@ -69,7 +65,7 @@ private:
 
 
             if (where == F("fp")) {
-                isTermina = true;
+                isTerminal = true;
                 outputAirPwm = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("AIR SPEED: "));
@@ -81,7 +77,7 @@ private:
     }
 
     void debug() {
-        Serial.print(F("\t//\t"));
+        Serial.print(F(" "));
 
         Serial.print(F(" AIR:  "));
         Serial.print((uint16_t) averageTmp);
@@ -102,19 +98,55 @@ private:
     }
 
 
-    void readTemp() {
-        unsigned int avr = 0;
+    void calTemp() {
+        /*unsigned int avr = 0;
         for (index = 0; index < adcSamples; ++index) {
             avr += analogRead(pinAirTmp);
             delayMicroseconds(50);
         }
-        activeRawTmp = avr / index;
+        activeTmp = avr / index;
+        */
+
+        activeRawTmp = readRawTmp / readIndTmp;
+        readRawTmp = 0;
+        readIndTmp = 0;
+
         activeTemp = map(activeRawTmp, 200, 450, 220, 500) + 10;
         averageTmp += (activeTemp - averageTmp) * 0.05;
 
 
     }
 
+
+    void standbys() {
+
+
+        int state = digitalRead(pinAirSwc);
+        if (state == LOW && state != lastState && isAirOn) {
+            delay(10);
+            if (digitalRead(pinAirSwc) == LOW) {
+                lastState = LOW;
+                isAirStandby = true;
+                standBegin = now;
+            }
+        } else if (state == HIGH && state != lastState && isAirOn) {
+            delay(10);
+            if (digitalRead(pinAirSwc) == HIGH) {
+                lastState = HIGH;
+                isAirStandby = false;
+                standBegin = 0;
+            }
+
+        }
+
+        //
+        // turn off
+        if (now - standBegin > standby && standBegin > 0) {
+            isAirOn = false;
+            isAirStandby = false;
+            standBegin = 0;
+        }
+    }
 
 public:
 
@@ -135,33 +167,36 @@ public:
 
     void listen(String where) {
         terminal(where);
+        standbys();
+        readRawTmp += analogRead(pinAirTmp);
+        readIndTmp++;
     }
 
 
     void manage(SolderingStation sos) {
-        readTemp();
-        if (sos.isHot() && !isTermina) {
-            uint16_t input;
-            input = sos.getHotSetPoint();
-            targetTmp = (uint16_t) map(input, 0, 1024, 200, 450);
-            input = sos.getAirSetPoint();
-            outputAirPwm = (uint16_t) map(input, 0, 1024, 1, 50);
-        } else if (!sos.isHot() && !isTermina) {
+
+        calTemp();
+
+        if (!isAirOn && !isTerminal) {
             targetTmp = 0;
             outputAirPwm = 0;
+        } else if (isAirOn && isAirStandby) {
+            targetTmp = 200;
+            outputAirPwm = 1;
+        } else if (isAirOn && !isAirStandby) {
+            targetTmp = (uint16_t) map(setAir, 0, 1024, 100, 450);
+            outputAirPwm = (uint16_t) map(setFan, 0, 1024, 1, 20);
         }
 
-        if (targetTmp > 0)
-            outputHotPwm = (uint8_t) airPID.step(targetTmp, activeTemp);
+        outputHotPwm = (uint8_t) airPID.step(targetTmp, activeTemp);
 
-
-        if (targetTmp == 0 && activeTemp > 80 || activeTemp > 500) {
-            analogWrite(pinAirPwm, 255);
-            hot.setBrightness(0);
-        } else {
-            hot.setBrightness(outputHotPwm);
-            analogWrite(pinAirPwm, outputAirPwm);
+        if (targetTmp == 0 && activeTemp > 75 || activeTemp > 500) {
+            outputHotPwm = 0;
+            outputAirPwm = 255;
         }
+        hot.setBrightness(outputHotPwm);
+        analogWrite(pinAirPwm, outputAirPwm);
+
 
         debug();
     }

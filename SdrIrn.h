@@ -16,13 +16,14 @@ FastPID sdrPID(sdrKp, sdrKi, sdrKd, sdrHz, 8, false);
 class SdrIrn {
 
 private:
-
-    static int8_t toggleSwc;
+    boolean isOnToggle = false;
     uint8_t outputPwm;
-    int16_t targetRawTmp = 0;
-    int16_t activeRawTmp = 0;
-    uint16_t drawTmp = 0;
-    double averageRawTmp = 0;
+    uint8_t standbyState = 0;
+    int16_t targetTmp = 0;
+    int16_t activeTmp = 0;
+
+    double averageTmp = 0;
+    unsigned long standbyBegin = 0;
 
     void readTemp() {
         analogWrite(pinIronPwm, 0);
@@ -32,15 +33,13 @@ private:
             avr += analogRead(pinIronTmp);
             delayMicroseconds(50);
         }
-        activeRawTmp = avr / index;
-        averageRawTmp += (activeRawTmp - averageRawTmp) * 0.05;
-        drawTmp = (int16_t) 1.758 * averageRawTmp - 0.8; // 	Y = 1.059*X - 39.39
-        if (drawTmp < 0) {
-            drawTmp = 0;
-        }
-
+        activeTmp = getTemp(avr / index);
+        averageTmp += (activeTmp - averageTmp) * 0.05;
     }
 
+    uint16_t getTemp(uint16_t raw) {
+        return (int16_t) 1.758 * raw - 0.8; // 	Y = 1.059*X - 39.39
+    }
 
     void terminal(String where) {
         if (Serial.available()) {
@@ -55,10 +54,10 @@ private:
             }
 
             if (where == F("it")) {
-                targetRawTmp = Serial.readStringUntil('\n').toInt();
+                targetTmp = Serial.readStringUntil('\n').toInt();
                 Serial.println();
                 Serial.print(F("IRON TARGET: "));
-                Serial.print(targetRawTmp);
+                Serial.print(targetTmp);
                 Serial.println();
             }
 
@@ -66,20 +65,48 @@ private:
     }
 
     void debug() {
-        Serial.println();
+        Serial.print(F("  "));
 
         Serial.print(F(" IRON:  "));
-        Serial.print(drawTmp);
+        Serial.print((uint16_t) averageTmp);
 
         Serial.print(F(" ITar: "));
-        Serial.print(targetRawTmp);
+        Serial.print(targetTmp);
 
         Serial.print(F(" ITmp: "));
-        Serial.print(activeRawTmp);
+        Serial.print(activeTmp);
 
         Serial.print(F(" IPwm: "));
         Serial.print(outputPwm);
 
+        Serial.print(F(" ISwc:"));
+        Serial.print(standbyBegin);
+
+    }
+
+    void standbys() {
+
+
+        uint8_t state = digitalRead(pinIronSwc);
+        if (standbyState != state) {
+            delay(10);
+            if (digitalRead(pinIronSwc) == state) {
+                standbyState = state;
+                standbyBegin = now;
+                isIrnStandby = false;
+            }
+        }
+
+        if (now - standbyBegin > standby && standbyBegin > 0 && !isIrnStandby) {
+            isIrnStandby = true;
+            standbyBegin = now;
+        }
+
+        if (now - standbyBegin > shutdown && standbyBegin > 0 && isIrnStandby) {
+            standbyBegin = 0;
+            isIrnOn = false;
+            isIrnStandby = false;
+        }
     }
 
 public:
@@ -88,34 +115,47 @@ public:
     }
 
 
-    static void toggleSdrIron() {
-        SdrIrn::toggleSwc++;
-    }
-
     void begin() {
-//        enableInterrupt(pinIronSwc, SdrIrn::toggleSdrIron, CHANGE);
         pinMode(pinIronPwm, OUTPUT);
         pinMode(pinIronSwc, INPUT_PULLUP);
         pinMode(pinIronTmp, INPUT);
+        standbyBegin = now;
     }
 
     void listen(String where) {
         terminal(where);
+        standbys();
     }
 
 
-    void manage() {
+    void manage(SolderingStation sos) {
+
+        if (isOnToggle != isIrnOn ) {
+            isOnToggle = isIrnOn;
+            standbyBegin = now;
+        }
+
         readTemp();
-        if (targetRawTmp > 0)
-            outputPwm = (uint8_t) sdrPID.step(targetRawTmp, activeRawTmp);
+        if (isIrnOn && !isIrnStandby) {
+            targetTmp = map(setIrn, 0, 1024, 200, 450);
+        }
+
+        if (isIrnOn && isIrnStandby) {
+            targetTmp = 200;
+        }
+
+        outputPwm = sdrPID.step(targetTmp, activeTmp);
+
+        if (!isIrnOn) {
+            outputPwm = 0;
+            targetTmp = 0;
+        }
         analogWrite(pinIronPwm, outputPwm);
         debug();
     }
 
 
 };
-
-static int8_t SdrIrn::toggleSwc = 0;
 
 
 #endif //SOLDERINGSTATION_SOLDERINGSTATION_H
