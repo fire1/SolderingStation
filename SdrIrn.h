@@ -130,14 +130,14 @@ public:
 
     void manage(SolderingStation sos) {
 
-        if (isOnToggle != isIrnOn ) {
+        if (isOnToggle != isIrnOn) {
             isOnToggle = isIrnOn;
             standbyBegin = now;
         }
 
         readTemp();
         if (isIrnOn && !isIrnStandby) {
-            targetTmp = map(setIrn, 0, 1024, 200, 450);
+            targetTmp = map(setIrn, 0, 1024, 200, 450) + 15;
         }
 
         if (isIrnOn && isIrnStandby) {
