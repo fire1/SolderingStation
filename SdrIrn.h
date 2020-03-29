@@ -33,11 +33,16 @@ private:
             avr += analogRead(pinIronTmp);
             delayMicroseconds(50);
         }
-        activeTmp = getTemp(avr / index);
+        activeTmp = toTemp(avr / index);
         averageTmp += (activeTmp - averageTmp) * 0.05;
     }
 
-    uint16_t getTemp(uint16_t raw) {
+    /**
+     *
+     * @param raw
+     * @return
+     */
+    uint16_t toTemp(uint16_t raw) {
         return (int16_t) 1.758 * raw - 0.8; // 	Y = 1.059*X - 39.39
     }
 
@@ -137,14 +142,15 @@ public:
 
         readTemp();
         if (isIrnOn && !isIrnStandby) {
-            targetTmp = map(setIrn, 0, 1024, 200, 450) + 15;
+            targetTmp = map(setIrn, 1020, 0, 200, 450);
         }
 
         if (isIrnOn && isIrnStandby) {
             targetTmp = 200;
         }
 
-        outputPwm = sdrPID.step(targetTmp, activeTmp);
+        tarIrn = targetTmp, actIrn = averageTmp;
+        outputPwm = sdrPID.step(targetTmp, activeTmp - 20);
 
         if (!isIrnOn) {
             outputPwm = 0;

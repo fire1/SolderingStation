@@ -7,7 +7,7 @@
 
 #include <Arduino.h>
 #include <FastPID.h>
-//#include <EnableInterrupt.h>
+#include <LiquidCrystal_I2C.h>
 
 #ifndef FastPID_H
 
@@ -15,18 +15,20 @@
 
 #endif
 
-#ifndef EnableInterrupt_h
+#ifndef FDB_LIQUID_CRYSTAL_I2C_H
 
-//#include "../libraries/EnableInterrupt/EnableInterrupt.h"
+#include "../libraries/LiquidCrystal_I2C/LiquidCrystal_I2C.h"
 
 #endif
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 unsigned long now = 0, last = 0;
 String terminal;
 
 
-boolean isAirOn = false, isIrnOn = false, isAirStandby = false, isIrnStandby;
-uint16_t  setIrn, setAir, setFan;
+boolean isAirOn = false, isIrnOn = false, isAirStandby = false, isIrnStandby = false;
+uint16_t setIrn, setAir, setFan, tarIrn, actIrn, tarAir, actAir;
 //
 // Solder iron
 volatile uint8_t index = 0; // Index for "For" :D
@@ -66,14 +68,15 @@ sound toneOff = {25, 10, 2}; // off
 class SolderingStation {
 
 
+    char num[4];
     sound tones = {0, 0, 0};
     uint8_t playIndex = 0;
     unsigned long playSound = 0, playMute = 0;
 
 
     boolean compare(int read, int last) {
-        return read != last;
-        return read != last && read > last + 5 && read < last - 5;
+        int8_t gap = abs(last - read);
+        return gap > 5;
     }
 
     void play(sound value) {
@@ -171,6 +174,9 @@ public:
         digitalWrite(pinBtnHot, HIGH);
         digitalWrite(pinBtnIrn, HIGH);
 
+
+        lcd.begin();
+
     }
 
     void listen() {
@@ -181,6 +187,36 @@ public:
 
 
     void draw() {
+
+        if (actAir > 600) actAir = 0;
+        if (actIrn > 600) actIrn = 0;
+
+
+        lcd.setCursor(0, 0);
+        lcd.print(F("AIR: "));
+        sprintf(num, "%03d", tarAir);
+        (isAirOn) ? lcd.print(num) : lcd.print(F("OFF"));
+
+        lcd.setCursor(0, 1);
+        lcd.print(F("SDR: "));
+        sprintf(num, "%03d", tarIrn);
+        (isIrnOn) ? lcd.print(num) : lcd.print(F("OFF"));
+
+        lcd.setCursor(9, 0);
+        sprintf(num, "%03d", actAir);
+        (isAirOn) ? lcd.print(num) : lcd.print(F("   "));
+        (!isAirStandby) ? lcd.print(F(" ")) : lcd.print(F("^"));
+
+
+        lcd.setCursor(9, 1);
+        sprintf(num, "%03d", actIrn);
+        (isIrnOn) ? lcd.print(num) : lcd.print(F("   "));
+        (isIrnOn && isIrnStandby) ? lcd.print(F("^")) : lcd.print(F(" "));
+
+        lcd.setCursor(14, 0);
+        sprintf(num, "%02d", map(setFan, 1020, 0, 1, 99));
+        (isAirOn) ? lcd.print(num) : lcd.print(F("  "));
+
 
         debug();
     }

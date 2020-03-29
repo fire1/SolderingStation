@@ -114,7 +114,6 @@ private:
         activeTemp = map(activeRawTmp, 200, 450, 220, 500) + 10;
         averageTmp += (activeTemp - averageTmp) * 0.05;
 
-
     }
 
 
@@ -184,11 +183,12 @@ public:
             targetTmp = 200;
             outputAirPwm = 1;
         } else if (isAirOn && !isAirStandby) {
-            targetTmp = (uint16_t) map(setAir, 0, 1024, 100, 450);
-            outputAirPwm = (uint16_t) map(setFan, 0, 1024, 1, 20);
+            targetTmp = (uint16_t) map(setAir, 1020, 0, 100, 450);
+            outputAirPwm = (uint16_t) map(setFan, 1020, 0, 1, 15);
         }
 
-        outputHotPwm = (uint8_t) airPID.step(targetTmp, activeTemp);
+        tarAir = targetTmp, actAir = activeTemp;
+        outputHotPwm = (uint8_t) airPID.step(targetTmp + 10, activeTemp);
 
         if (targetTmp == 0 && activeTemp > 75 || activeTemp > 500) {
             outputHotPwm = 0;
