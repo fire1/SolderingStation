@@ -54,7 +54,7 @@ const uint8_t pinBtnHot = 12;
 const uint8_t pinBtnIrn = A3;
 
 const uint8_t pinBuzzer = 8;
-const int16_t refreshing = 250;
+const int16_t refreshing = 300;
 const unsigned long standby = 120000;
 const unsigned long shutdown = 240000;
 //
