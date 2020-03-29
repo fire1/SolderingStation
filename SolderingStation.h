@@ -55,7 +55,7 @@ const uint8_t pinBtnIrn = A3;
 
 const uint8_t pinBuzzer = 8;
 const int16_t refreshing = 250;
-const unsigned long standby = 160000;
+const unsigned long standby = 120000;
 const unsigned long shutdown = 240000;
 //
 // Sounds
