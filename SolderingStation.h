@@ -106,8 +106,8 @@ class SolderingStation {
             delay(10);
             if (digitalRead(pinBtnHot) == LOW) {
                 isAirOn = !isAirOn;
-                isAirOn ? play(toneOn) : play(toneOff);
-                delay(250);
+//                isAirOn ? play(toneOn) : play(toneOff);
+                soundBtn();
             }
         }
 
@@ -115,12 +115,22 @@ class SolderingStation {
             delay(10);
             if (digitalRead(pinBtnIrn) == LOW) {
                 isIrnOn = !isIrnOn;
-                isIrnOn ? play(toneOn) : play(toneOff);
-                delay(250);
+//                isIrnOn ? play(toneOn) : play(toneOff);
+                soundBtn();
             }
         }
     }
 
+
+    void soundBtn() {
+        for (index = 0; index < 4; ++index) {
+            delay(5);
+            digitalWrite(pinBuzzer, HIGH);
+            delay(50);
+            digitalWrite(pinBuzzer, LOW);
+        }
+        digitalWrite(pinBuzzer, LOW);
+    }
 
     void player() {
         if (tones[3] == 0) return;
@@ -205,7 +215,7 @@ public:
         lcd.setCursor(9, 0);
         sprintf(num, "%03d", actAir);
         (isAirOn) ? lcd.print(num) : lcd.print(F("   "));
-        (!isAirStandby) ? lcd.print(F(" ")) : lcd.print(F("^"));
+        (isAirOn && isAirStandby) ? lcd.print(F("^")) : lcd.print(F(" "));
 
 
         lcd.setCursor(9, 1);
