@@ -90,7 +90,7 @@ private:
     }
 
     void standbys() {
-
+        if (!isIrnOn) return;
 
         uint8_t state = digitalRead(pinIronSwc);
         if (standbyState != state) {
