@@ -150,7 +150,7 @@ public:
         }
 
         tarIrn = targetTmp, actIrn = averageTmp;
-        outputPwm = sdrPID.step(targetTmp, activeTmp - 20);
+        outputPwm = sdrPID.step(targetTmp, activeTmp - 17);
 
         if (!isIrnOn) {
             outputPwm = 0;
