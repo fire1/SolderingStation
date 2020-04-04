@@ -23,16 +23,16 @@
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-unsigned long now = 0, last = 0;
+unsigned long now = 0, last = 0, bounce = 0;
 String terminal;
 
 
 boolean isAirOn = false, isIrnOn = false, isAirStandby = false, isIrnStandby = false;
-uint16_t setIrn, setAir, setFan, tarIrn, actIrn, tarAir, actAir;
+uint16_t setIrn, setAir, setFan = 1, tarIrn, actIrn, tarAir, actAir;
 //
 // Solder iron
 volatile uint8_t index = 0; // Index for "For" :D
-const uint8_t adcSamples = 5;
+const uint8_t adcSamples = 8;
 const uint8_t pinIronPwm = 10;
 const uint8_t pinIronTmp = A7;
 const uint8_t pinIronSwc = 4;
@@ -54,34 +54,48 @@ const uint8_t pinBtnHot = 12;
 const uint8_t pinBtnIrn = A3;
 
 const uint8_t pinBuzzer = 8;
+const uint8_t pinBlinks = 13;
+
 const int16_t refreshing = 300;
 const unsigned long standby = 120000;
 const unsigned long shutdown = 240000;
 //
-// Sounds
-typedef uint8_t sound[3];
-// Format {<HIGH time>,<LOW time>,<offset>}
-sound toneOn = {50, 10, 1}; // on
-sound toneOff = {25, 10, 2}; // off
+// Blinks + Sounds
+boolean blinker = 0;
 
+void blink() {
+    blinker = !blinker;
+    digitalWrite(pinBlinks, blinker);
+}
+
+unsigned long startAlarmed = 0;
+int16_t soundLength = 0;
+
+void alarm() {
+    if (startAlarmed == 0) {
+        digitalWrite(pinBuzzer, HIGH);
+        startAlarmed = millis();
+        soundLength = 150;
+    }
+}
+
+void tick() {
+    if (startAlarmed == 0) {
+        digitalWrite(pinBuzzer, HIGH);
+        startAlarmed = millis();
+        soundLength = 50;
+    }
+}
 
 class SolderingStation {
 
 
     char num[4];
-    sound tones = {0, 0, 0};
-    uint8_t playIndex = 0;
-    unsigned long playSound = 0, playMute = 0;
 
 
     boolean compare(int read, int last) {
         int8_t gap = abs(last - read);
         return gap > 5;
-    }
-
-    void play(sound value) {
-        tones[1] = value[1];
-        tones[2] = value[2];
     }
 
 
@@ -102,21 +116,23 @@ class SolderingStation {
             setIrn = read;
 
 
-        if (digitalRead(pinBtnHot) == LOW) {
-            delay(10);
+        if (digitalRead(pinBtnHot) == LOW && now > bounce) {
+            digitalWrite(pinBtnHot, HIGH);
+            delay(30);
             if (digitalRead(pinBtnHot) == LOW) {
+                bounce = now + 450;
                 isAirOn = !isAirOn;
-//                isAirOn ? play(toneOn) : play(toneOff);
-                soundBtn();
+                tick();
             }
         }
 
-        if (digitalRead(pinBtnIrn) == LOW) {
-            delay(10);
+        if (digitalRead(pinBtnIrn) == LOW && now > bounce) {
+            digitalWrite(pinBtnIrn, HIGH);
+            delay(30);
             if (digitalRead(pinBtnIrn) == LOW) {
+                bounce = now + 450;
                 isIrnOn = !isIrnOn;
-//                isIrnOn ? play(toneOn) : play(toneOff);
-                soundBtn();
+                tick();
             }
         }
     }
@@ -132,27 +148,14 @@ class SolderingStation {
         digitalWrite(pinBuzzer, LOW);
     }
 
-    void player() {
-        if (tones[3] == 0) return;
 
-
-        if (tones[3] < playIndex) {
-            if (playSound == 0 && playMute < now) {
-                playSound = now + tones[1];
-                playIndex++;
-                digitalWrite(pinBuzzer, HIGH);
-            } else if (playSound > now) {
-                playSound = 0;
-                playMute = now + tones[2];
-                digitalWrite(pinBuzzer, LOW);
-            }
-
-        } else {
-            tones[1] = 0;
-            tones[2] = 0;
-            tones[3] = 0;
+    void play() {
+        if (millis() > startAlarmed + soundLength) {
+            digitalWrite(pinBuzzer, LOW);
+            startAlarmed = 0;
         }
     }
+
 
     void debug() {
         Serial.println();
@@ -173,6 +176,7 @@ class SolderingStation {
 public:
     SolderingStation() {}
 
+
     void begin() {
         pinMode(pinPotAir, INPUT_PULLUP);
         pinMode(pinPotHot, INPUT_PULLUP);
@@ -190,14 +194,14 @@ public:
     }
 
     void listen() {
+        play();
         inputs();
-        player();
-
     }
 
 
     void draw() {
 
+        digitalWrite(pinBlinks, LOW);
         if (actAir > 600) actAir = 0;
         if (actIrn > 600) actIrn = 0;
 

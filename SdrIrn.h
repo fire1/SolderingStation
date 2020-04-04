@@ -9,7 +9,7 @@
 
 
 /*PID variables. Fine tune this values. Start with P=1 and D and I = 0. Start increasing till you get good results*/
-float sdrKp = 7.98, sdrKi = 0.055, sdrKd = 0.86, sdrHz = 10;          /*My values: Kp=7.98, Ki=0.055, Kd=0.86, Hz=10;*/
+float sdrKp = 7.98, sdrKi = 0.055, sdrKd = 0.86, sdrHz = 15;/*My values: Kp=7.98, Ki=0.055, Kd=0.86, Hz=10;*/
 FastPID sdrPID(sdrKp, sdrKi, sdrKd, sdrHz, 8, false);
 
 
@@ -17,15 +17,17 @@ class SdrIrn {
 
 private:
     boolean isOnToggle = false;
+
     uint8_t outputPwm;
     uint8_t standbyState = 0;
     int16_t targetTmp = 0;
     int16_t activeTmp = 0;
 
     double averageTmp = 0;
-    unsigned long standbyBegin = 0;
+    unsigned long standTime = 0;
 
     void readTemp() {
+        blink();
         analogWrite(pinIronPwm, 0);
         delay(15);
         unsigned int avr = 0;
@@ -35,6 +37,7 @@ private:
         }
         activeTmp = toTemp(avr / index);
         averageTmp += (activeTmp - averageTmp) * 0.05;
+
     }
 
     /**
@@ -85,32 +88,44 @@ private:
         Serial.print(outputPwm);
 
         Serial.print(F(" ISwc:"));
-        Serial.print(standbyBegin);
+        Serial.print(standTime);
 
     }
 
     void standbys() {
-        if (!isIrnOn) return;
+
+
+
+        if (now - standTime > standby && standTime > 0 && !isIrnStandby) {
+            isIrnStandby = true;
+            standTime = now;
+            tick();
+        }
+
+        if (now - standTime > shutdown && standTime > 0 && isIrnStandby) {
+            standTime = 0;
+            isIrnOn = isOnToggle = false;
+            isIrnStandby = false;
+            alarm();
+        }
+
+
+
+        if (isIrnOn != isOnToggle && standTime == 0) {
+            isOnToggle = isIrnOn;
+            if (isIrnOn) {
+                standTime = now;
+            }
+        }
 
         uint8_t state = digitalRead(pinIronSwc);
         if (standbyState != state) {
             delay(10);
             if (digitalRead(pinIronSwc) == state) {
                 standbyState = state;
-                standbyBegin = now;
+                standTime = now;
                 isIrnStandby = false;
             }
-        }
-
-        if (now - standbyBegin > standby && standbyBegin > 0 && !isIrnStandby) {
-            isIrnStandby = true;
-            standbyBegin = now;
-        }
-
-        if (now - standbyBegin > shutdown && standbyBegin > 0 && isIrnStandby) {
-            standbyBegin = 0;
-            isIrnOn = false;
-            isIrnStandby = false;
         }
     }
 
@@ -124,7 +139,9 @@ public:
         pinMode(pinIronPwm, OUTPUT);
         pinMode(pinIronSwc, INPUT_PULLUP);
         pinMode(pinIronTmp, INPUT);
-        standbyBegin = now;
+        digitalWrite(pinIronSwc, HIGH);
+
+        standTime = now;
     }
 
     void listen(String where) {
@@ -134,13 +151,8 @@ public:
 
 
     void manage(SolderingStation sos) {
+        if (isIrnOn) readTemp();
 
-        if (isOnToggle != isIrnOn) {
-            isOnToggle = isIrnOn;
-            standbyBegin = now;
-        }
-
-        readTemp();
         if (isIrnOn && !isIrnStandby) {
             targetTmp = map(setIrn, 1020, 0, 200, 450);
         }
@@ -152,10 +164,16 @@ public:
         tarIrn = targetTmp, actIrn = averageTmp;
         outputPwm = sdrPID.step(targetTmp, activeTmp - 17);
 
+
+        if (tarIrn - 30 < actIrn && tarIrn - 25 > actIrn)
+            alarm();
+
         if (!isIrnOn) {
             outputPwm = 0;
             targetTmp = 0;
         }
+
+
         analogWrite(pinIronPwm, outputPwm);
         debug();
     }

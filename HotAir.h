@@ -18,7 +18,7 @@ DimmableLight hot(pinHotPwm);
 
 
 /*PID variables. Fine tune this values. Start with P=1 and D and I = 0. Start increasing till you get good results*/
-float airKp = 7.98, airKi = 0.055, airKd = 0.86, airHz = 10;          /*My values: Kp=7.98, Ki=0.055, Kd=0.86, Hz=10;*/
+float airKp = 7.98, airKi = 0.055, airKd = 0.86, airHz = 30; /*My values: Kp=7.98, Ki=0.055, Kd=0.86, Hz=10;*/
 FastPID airPID(airKp, airKi, airKd, airHz, 8, false);
 
 uint8_t hotPwm = 0;
@@ -29,7 +29,6 @@ class HotAir {
 
 
     boolean isTerminal = false;
-    boolean isStandby = false;
     uint8_t lastState = 0;
     uint8_t outputHotPwm, outputAirPwm;
     int16_t activeRawTmp, activeTemp;
@@ -127,6 +126,7 @@ private:
                 lastState = LOW;
                 isAirStandby = true;
                 standBegin = now;
+                tick();
             }
         } else if (state == HIGH && state != lastState && isAirOn) {
             delay(10);
@@ -184,16 +184,20 @@ public:
             outputAirPwm = 1;
         } else if (isAirOn && !isAirStandby) {
             targetTmp = (uint16_t) map(setAir, 1020, 0, 100, 450);
-            outputAirPwm = (uint16_t) map(setFan, 1020, 0, 1, 15);
+            outputAirPwm = (uint8_t) map(setFan, 1020, 0, 1, 12);
         }
 
-        tarAir = targetTmp, actAir = activeTemp;
-        outputHotPwm = (uint8_t) airPID.step(targetTmp + 10, activeTemp);
+        outputHotPwm = (uint8_t) airPID.step(targetTmp + 7, activeTemp);
+        tarAir = targetTmp, actAir = (uint16_t) activeTemp;
 
         if (targetTmp == 0 && activeTemp > 75 || activeTemp > 500) {
             outputHotPwm = 0;
             outputAirPwm = 255;
         }
+
+        if (tarAir - 30 < actAir && tarAir - 25 > actAir)
+            alarm();
+
         hot.setBrightness(outputHotPwm);
         analogWrite(pinAirPwm, outputAirPwm);
 
