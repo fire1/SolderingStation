@@ -181,7 +181,7 @@ public:
             outputAirPwm = 0;
         } else if (isAirOn && isAirStandby) {
             targetTmp = 200;
-            outputAirPwm = 1;
+            outputAirPwm = 100;
         } else if (isAirOn && !isAirStandby) {
             targetTmp = (uint16_t) map(setAir, 1020, 0, 250, 450);
             outputAirPwm = (uint8_t) map(setFan, 1020, 0, 70, 220);
