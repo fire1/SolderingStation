@@ -56,7 +56,7 @@ const uint8_t pinBtnIrn = A3;
 const uint8_t pinBuzzer = 8;
 const uint8_t pinBlinks = 13;
 
-const int16_t refreshing = 300;
+const int16_t refreshing = 285;
 const unsigned long standby = 120000;
 const unsigned long shutdown = 240000;
 //
@@ -75,7 +75,7 @@ void alarm() {
     if (startAlarmed == 0) {
         digitalWrite(pinBuzzer, HIGH);
         startAlarmed = millis();
-        soundLength = 150;
+        soundLength = 110;
     }
 }
 
@@ -83,7 +83,7 @@ void tick() {
     if (startAlarmed == 0) {
         digitalWrite(pinBuzzer, HIGH);
         startAlarmed = millis();
-        soundLength = 50;
+        soundLength = 30;
     }
 }
 
@@ -118,9 +118,9 @@ class SolderingStation {
 
         if (digitalRead(pinBtnHot) == LOW && now > bounce) {
             digitalWrite(pinBtnHot, HIGH);
-            delay(30);
+            delay(8);
             if (digitalRead(pinBtnHot) == LOW) {
-                bounce = now + 450;
+                bounce = now + 220;
                 isAirOn = !isAirOn;
                 tick();
             }
@@ -128,9 +128,9 @@ class SolderingStation {
 
         if (digitalRead(pinBtnIrn) == LOW && now > bounce) {
             digitalWrite(pinBtnIrn, HIGH);
-            delay(30);
+            delay(8);
             if (digitalRead(pinBtnIrn) == LOW) {
-                bounce = now + 450;
+                bounce = now + 220;
                 isIrnOn = !isIrnOn;
                 tick();
             }

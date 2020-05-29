@@ -110,7 +110,7 @@ private:
         readRawTmp = 0;
         readIndTmp = 0;
 
-        activeTemp = map(activeRawTmp, 200, 450, 220, 500) + 10;
+        activeTemp = map(activeRawTmp, 200, 450, 220, 500) -30;
         averageTmp += (activeTemp - averageTmp) * 0.05;
 
     }
@@ -183,8 +183,8 @@ public:
             targetTmp = 200;
             outputAirPwm = 1;
         } else if (isAirOn && !isAirStandby) {
-            targetTmp = (uint16_t) map(setAir, 1020, 0, 100, 450);
-            outputAirPwm = (uint8_t) map(setFan, 1020, 0, 1, 12);
+            targetTmp = (uint16_t) map(setAir, 1020, 0, 250, 450);
+            outputAirPwm = (uint8_t) map(setFan, 1020, 0, 70, 220);
         }
 
         outputHotPwm = (uint8_t) airPID.step(targetTmp + 7, activeTemp);
