@@ -9,7 +9,7 @@
 #include <FastPID.h>
 
 //
-// Library LcdBarGrapX
+// Library V2 from Martin Kubovcik 
 #include <LiquidCrystal_I2C.h>
 
 
