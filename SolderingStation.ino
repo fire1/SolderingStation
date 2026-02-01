@@ -33,9 +33,10 @@ void loop() {
         last = now + refreshing;
 
         sos.draw();
+        terminal = "";
+    }
 
         air.manage(sos);
         irn.manage(sos);
-        terminal = "";
-    }
+
 }

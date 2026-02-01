@@ -9,19 +9,10 @@
 #include <FastPID.h>
 #include <LiquidCrystal_I2C.h>
 
-#ifndef FastPID_H
 
-#include "../libraries/FastPID/src/FastPID.h"
-
-#endif
-
-#ifndef FDB_LIQUID_CRYSTAL_I2C_H
-
-#include "../libraries/LiquidCrystal_I2C/LiquidCrystal_I2C.h"
-
-#endif
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+
 
 unsigned long now = 0, last = 0, bounce = 0;
 String terminal;
@@ -89,7 +80,7 @@ void tick() {
 
 class SolderingStation {
 
-
+    bool isInitRun = false;
     char num[4];
 
 
@@ -118,7 +109,7 @@ class SolderingStation {
 
         if (digitalRead(pinBtnHot) == LOW && now > bounce) {
             digitalWrite(pinBtnHot, HIGH);
-            delay(8);
+            delay(5);
             if (digitalRead(pinBtnHot) == LOW) {
                 bounce = now + 220;
                 isAirOn = !isAirOn;
@@ -128,7 +119,7 @@ class SolderingStation {
 
         if (digitalRead(pinBtnIrn) == LOW && now > bounce) {
             digitalWrite(pinBtnIrn, HIGH);
-            delay(8);
+            delay(5);
             if (digitalRead(pinBtnIrn) == LOW) {
                 bounce = now + 220;
                 isIrnOn = !isIrnOn;
@@ -140,9 +131,9 @@ class SolderingStation {
 
     void soundBtn() {
         for (index = 0; index < 4; ++index) {
-            delay(5);
+            delay(2);
             digitalWrite(pinBuzzer, HIGH);
-            delay(50);
+            delay(20);
             digitalWrite(pinBuzzer, LOW);
         }
         digitalWrite(pinBuzzer, LOW);
@@ -189,7 +180,8 @@ public:
         digitalWrite(pinBtnIrn, HIGH);
 
 
-        lcd.begin();
+        //lcd.begin();
+        lcd.init();
 
     }
 
@@ -206,13 +198,20 @@ public:
         if (actIrn > 600) actIrn = 0;
 
 
+        if(!isInitRun){
         lcd.setCursor(0, 0);
         lcd.print(F("AIR: "));
+        }
+        lcd.setCursor(5, 0);
         sprintf(num, "%03d", tarAir);
         (isAirOn) ? lcd.print(num) : lcd.print(F("OFF"));
 
+        if(!isInitRun){
         lcd.setCursor(0, 1);
         lcd.print(F("SDR: "));
+        }
+
+        lcd.setCursor(5, 1);
         sprintf(num, "%03d", tarIrn);
         (isIrnOn) ? lcd.print(num) : lcd.print(F("OFF"));
 
@@ -231,7 +230,7 @@ public:
         sprintf(num, "%02d", map(setFan, 1020, 0, 1, 99));
         (isAirOn) ? lcd.print(num) : lcd.print(F("  "));
 
-
+        if(!isInitRun) isInitRun =true;
         debug();
     }
 

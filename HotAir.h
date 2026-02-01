@@ -8,11 +8,7 @@
 #include "SolderingStation.h"
 #include <dimmable_light.h>
 
-#ifndef DIMMABLE_LIGHT_H
 
-#include "../libraries/Dimmable_Light_for_Arduino/src/dimmable_light.h"
-
-#endif
 
 DimmableLight hot(pinHotPwm);
 
@@ -183,14 +179,14 @@ public:
             targetTmp = 200;
             outputAirPwm = 100;
         } else if (isAirOn && !isAirStandby) {
-            targetTmp = (uint16_t) map(setAir, 1020, 0, 250, 450);
+            targetTmp = (uint16_t) map(setAir, 1020, 0, 200, 500);
             outputAirPwm = (uint8_t) map(setFan, 1020, 0, 70, 220);
         }
 
         outputHotPwm = (uint8_t) airPID.step(targetTmp + 7, activeTemp);
         tarAir = targetTmp, actAir = (uint16_t) activeTemp;
 
-        if (targetTmp == 0 && activeTemp > 75 || activeTemp > 500) {
+        if (targetTmp == 0 && activeTemp > 75 || activeTemp > 560) {
             outputHotPwm = 0;
             outputAirPwm = 255;
         }
