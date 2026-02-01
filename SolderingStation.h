@@ -7,6 +7,9 @@
 
 #include <Arduino.h>
 #include <FastPID.h>
+
+//
+// Library LcdBarGrapX
 #include <LiquidCrystal_I2C.h>
 
 
@@ -182,6 +185,7 @@ public:
 
         //lcd.begin();
         lcd.init();
+        lcd.backlight();
 
     }
 
